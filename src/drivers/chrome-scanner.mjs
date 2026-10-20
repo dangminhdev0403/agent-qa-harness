@@ -4,7 +4,7 @@ import { runChromeFlows } from './chrome-flow-runner.mjs';
  * Universal Chrome DevTools & Web Scanner Driver
  * Scans declared frontend routes and executes interactive user action flows.
  */
-export async function runChromeScanner(config) {
+export async function runChromeScanner(config, options = {}) {
   const hasRoutes = config.browser.routes && config.browser.routes.length > 0;
   const hasFlows = config.browser.flows && config.browser.flows.length > 0;
 
@@ -75,7 +75,7 @@ export async function runChromeScanner(config) {
   // 2. Chạy các kịch bản tương tác flows (nếu có)
   let flowSummary = null;
   if (hasFlows) {
-    flowSummary = await runChromeFlows(config);
+    flowSummary = await runChromeFlows(config, options);
     if (flowSummary.results) {
       for (const fr of flowSummary.results) {
         results.push({

@@ -13,12 +13,13 @@
 1. [Tại sao cần Agent QA Harness?](#-tại-sao-cần-agent-qa-harness)
 2. [2 Chế Độ Kiểm Thử Riêng Biệt & Cơ Chế Khử Mơ Hồ](#-2-chế-độ-kiểm-thử-riêng-biệt)
 3. [4 Tấm Khiên Bảo Vệ Đột Phá (Bulletproof Protections)](#-4-tấm-khiên-bảo-vệ-đột-phá-bulletproof)
-4. [Nguyên Tắc Bất Biến: Living Harness Contract](#-nguyên-tắc-bất-biến-living-harness-contract)
-5. [Kiến Trúc Kiểm Thử 4 Tầng](#-kiến-trúc-kiểm-thử-đa-tầng-4-tier-test-architecture)
-6. [Bắt Đầu Nhanh (Quickstart 60 Giây)](#-bắt-đầu-nhanh-áp-dụng-cho-mọi-repo-trong-60-giây)
-7. [Tích Hợp Archon Workflow DAG](#-tích-hợp-archon-workflow-dag)
-8. [Bảng Tra Cứu Lệnh CLI Toàn Cục](#-bảng-tra-cứu-lệnh-cli-toàn-cục)
-9. [Tài Liệu Chi Tiết](#-tài-liệu-chi-tiết)
+4. [Tăng Tốc Với Sub-Agents & Cô Lập Cửa Sổ Chrome Riêng Biệt](#-tăng-tốc-với-sub-agents--cô-lập-cửa-sổ-chrome-riêng-biệt)
+5. [Nguyên Tắc Bất Biến: Living Harness Contract](#-nguyên-tắc-bất-biến-living-harness-contract)
+6. [Kiến Trúc Kiểm Thử 4 Tầng](#-kiến-trúc-kiểm-thử-đa-tầng-4-tier-test-architecture)
+7. [Bắt Đầu Nhanh (Quickstart 60 Giây)](#-bắt-đầu-nhanh-áp-dụng-cho-mọi-repo-trong-60-giây)
+8. [Tích Hợp Archon Workflow DAG](#-tích-hợp-archon-workflow-dag)
+9. [Bảng Tra Cứu Lệnh CLI Toàn Cục](#-bảng-tra-cứu-lệnh-cli-toàn-cục)
+10. [Tài Liệu Chi Tiết](#-tài-liệu-chi-tiết)
 
 ---
 
@@ -69,6 +70,39 @@ Harness phân định rạch ròi thành 2 chế độ độc lập để phục
    - **Anti-Infinite-Loop Circuit Breaker**: Giới hạn tối đa 3 lần sửa code tự động. Nếu quá 3 lần lỗi vẫn lặp lại $\rightarrow$ Tự động ngắt mạch (Exit Code 2), ngăn chặn 2 agents cuốn vào vòng lặp sửa-test-sửa vô tận.
    - **Branch Isolator (`--isolate-branch`)**: Tự động chuyển sang nhánh cô lập `git checkout -b harness-fix/...` khi sửa lỗi, giữ nguyên vẹn nhánh chính và không đè code của task khác.
    - **Concurrency Lock (`.harness.lock`)**: Khóa file chống va chạm khi nhiều Agent cùng truy cập một codebase.
+
+---
+
+## 🚀 Tăng Tốc Với Sub-Agents & Cô Lập Cửa Sổ Chrome Riêng Biệt
+
+Để giải quyết bài toán thời gian và mở rộng tối đa tốc độ kiểm thử, Harness triển khai **Mô hình Swarm Đa Sub-Agents (Tri-Worker Swarm)**:
+
+### 1. Kiến Trúc 3 Sub-Agents Chuyên Biệt
+- **Worker 1 (`QA Code Gatekeeper`, Model: flash)**:
+  - Chạy `agent-harness test:code --auto-start`.
+  - Kiểm tra đồng thời Tier 0 (static rules, build, types, UI constraints), Tier 1 (socket probes), và Tier 2 (concurrency burst).
+  - Sử dụng model `flash` siêu nhẹ để trả kết quả chỉ trong vài giây.
+- **Worker 2 (`QA Flow Inspector`, Model: inherit)**:
+  - Chạy `agent-harness test:flow` hoặc trực tiếp điều khiển **Chrome DevTools MCP**.
+  - Kiểm tra giao diện thực tế, 0 lỗi console đỏ, 0 lỗi network 4xx/5xx và chụp ảnh màn hình lưu bằng chứng.
+- **Worker 3 (`QA Branch Fixer`, Workspace: branch)**:
+  - Khi có lỗi, Coordinator tự động spawn Worker 3 trong workspace nhánh phân lập (`Workspace: 'branch'`).
+  - Đọc `harness-out/INCIDENT_PACK.json`, sửa file lỗi tối thiểu, chạy probe xác minh, chỉ merge khi test xanh.
+
+### 2. Quy Chuẩn Cô Lập Cửa Sổ Chrome Riêng Biệt (Dedicated Window Protocol)
+Khi Sub-Agents thực thi kiểm thử giao diện bằng Chrome DevTools MCP, **BẮT BUỘC tuân thủ chu trình cô lập cửa sổ độc lập**:
+1. **Khởi tạo (`new_page`)**: Tuyệt đối KHÔNG cướp tab đang mở hoặc dùng chung tab. Gọi `new_page(url: ...)` để tạo cửa sổ Chrome hoàn toàn mới và lưu lại `pageId`.
+2. **Trói chặt ngữ cảnh (`select_page`)**: Mọi thao tác (`click`, `fill`, `navigate_page`, `list_console_messages`, `list_network_requests`, `take_screenshot`) đều phải nhắm trúng `pageId` đó.
+3. **Chống nhiễm chéo dữ liệu**: Phiên làm việc, cookies, LocalStorage giữa các luồng (ví dụ: luồng Khách vs luồng Lễ tân) hoàn toàn độc lập.
+4. **Dọn dẹp triệt để (`close_page`)**: Khi test xong (kể cả PASS hay FAIL), bắt buộc gọi `close_page` để giải phóng bộ nhớ, không để lại tab mồ côi.
+
+```bash
+# Lấy kế hoạch điều phối Sub-Agents song song kèm Session ID cửa sổ Chrome
+agent-harness subagents:plan
+
+# Lấy cấu hình Sub-Agent tự sửa lỗi trên nhánh cô lập
+agent-harness subagents:fix
+```
 
 ---
 
@@ -258,6 +292,9 @@ archon run .archon/workflows/universal-qa-harness.yaml
 | `agent-harness probe:socket` | Chạy riêng rẽ Tier 1 (Realtime Socket Probe) |
 | `agent-harness probe:concurrency` | Chạy riêng rẽ Tier 2 (Concurrency Gate) |
 | `agent-harness probe:browser` | Chạy riêng rẽ Tier 3 (Chrome & Route Scanner) |
+| `agent-harness subagents:plan` | Xuất JSON kế hoạch điều phối 2 Sub-Agents song song (Code Tester + Flow Tester với cửa sổ Chrome riêng biệt) |
+| `agent-harness subagents:fix` | Xuất JSON cấu hình Sub-Agent tự sửa lỗi trên nhánh cô lập (Workspace: 'branch') |
+| `agent-harness --window-session <id>` | Gán Session ID cửa sổ Chrome độc lập cho Sub-Agent |
 | `agent-harness --tier <0\|1\|2\|3>` | Chạy một Tier cụ thể được chỉ định |
 
 ---

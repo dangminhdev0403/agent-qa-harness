@@ -7,6 +7,7 @@ import { packageIncidentAndSummary } from './reporters/incident-packager.mjs';
 import { generateMarkdownReport } from './reporters/markdown-reporter.mjs';
 import { ensureServerRunning } from './core/server-manager.mjs';
 import { resolveAuthToken } from './core/auth-provider.mjs';
+import { SubagentDispatcher } from './core/subagent-dispatcher.mjs';
 
 /**
  * Runs the autonomous harness pipeline under 2 distinct modes with bulletproof guards:
@@ -77,7 +78,7 @@ export async function executeHarness(options = {}) {
     // CHẾ ĐỘ 2: TEST FLOW LUỒNG & GIAO DIỆN TRÌNH DUYỆT (Chrome DevTools / Browser Flows)
     if (mode === 'flow' || mode === 'all') {
       if (!targetTier || targetTier === '3' || targetTier === 'browser' || targetTier === 'chrome' || targetTier === 'flow') {
-        browserResults = await runChromeScanner(config);
+        browserResults = await runChromeScanner(config, options);
       }
     }
 
@@ -104,5 +105,6 @@ export {
   packageIncidentAndSummary,
   generateMarkdownReport,
   ensureServerRunning,
-  resolveAuthToken
+  resolveAuthToken,
+  SubagentDispatcher
 };

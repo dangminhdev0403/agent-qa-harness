@@ -8,16 +8,17 @@ import { interpolateTemplates } from '../core/template-engine.mjs';
  * and bridges seamlessly with Chrome DevTools MCP.
  * Supports dynamic template variables in URLs, inputs, and selectors.
  */
-export async function runChromeFlows(config) {
+export async function runChromeFlows(config, options = {}) {
   const flows = config.browser?.flows || [];
   if (!config.browser.enabled || flows.length === 0) {
     return { skipped: true, reason: 'Chưa có kịch bản tương tác flows nào được khai báo trong browser.' };
   }
 
+  const windowSessionId = options.windowSessionId || config.browser?.windowSessionId || `session-${Date.now().toString(36)}`;
   const results = [];
-  console.log(`\n[Chrome Flow Runner] Thực thi ${flows.length} kịch bản tương tác người dùng (UI Flows)...`);
+  console.log(`\n[Chrome Flow Runner] Thực thi ${flows.length} kịch bản UI Flows trên cửa sổ Chrome riêng biệt (Session: ${windowSessionId})...`);
 
-  const outputDir = path.join(config.outputDir, 'screenshots');
+  const outputDir = path.join(config.outputDir, 'screenshots', windowSessionId);
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }

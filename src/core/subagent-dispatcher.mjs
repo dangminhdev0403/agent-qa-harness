@@ -1,0 +1,134 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
+/**
+ * Subagent Dispatcher - Prepares optimized swarm subagent execution plans
+ * to parallelize code testing, browser flow testing, and branch-isolated auto-remediation.
+ *
+ * CRITICAL ISOLATION RULES:
+ * 1. WORKSPACE ISOLATION: Fixer subagents MUST run with Workspace: 'branch' to avoid git collisions.
+ * 2. BROWSER ISOLATION: Flow subagents MUST spawn and operate on their own DEDICATED Chrome window/tab
+ *    using `new_page`, bind operations with `select_page`, and clean up with `close_page`.
+ *    NEVER share active pages or allow cross-agent tab interference.
+ */
+export class SubagentDispatcher {
+  constructor(cwd) {
+    this.cwd = cwd;
+    this.configPath = path.join(cwd, 'harness.config.json');
+    this.incidentPath = path.join(cwd, 'harness-out', 'INCIDENT_PACK.json');
+  }
+
+  getConfig() {
+    if (fs.existsSync(this.configPath)) {
+      try {
+        return JSON.parse(fs.readFileSync(this.configPath, 'utf8'));
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  getIncidentPack() {
+    if (fs.existsSync(this.incidentPath)) {
+      try {
+        return JSON.parse(fs.readFileSync(this.incidentPath, 'utf8'));
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Generates a unique window session identifier for Chrome isolation
+   */
+  generateWindowSessionId(prefix = 'flow') {
+    const timestamp = Date.now();
+    const entropy = Math.random().toString(36).substring(2, 7);
+    return `harness-${prefix}-${timestamp}-${entropy}`;
+  }
+
+  /**
+   * Generates a parallel 2-worker subagent dispatch plan with full browser & workspace isolation
+   */
+  generateParallelPlan() {
+    const config = this.getConfig() || {};
+    const projectName = config.project || path.basename(this.cwd);
+    const windowSessionId = this.generateWindowSessionId('ui');
+    const initialUrl = config.baseUrl || "http://localhost:3000";
+
+    const codeWorker = {
+      TypeName: "self",
+      Role: "QA Code Gatekeeper",
+      Model: "flash",
+      Workspace: "inherit",
+      Prompt: `Execute Mode 1 QA Code and Stability verification for project "${projectName}". Run command \`agent-harness test:code --auto-start\`. Verify Tier 0 (static rules, build, types, UI constraints), Tier 1 (realtime socket connections), and Tier 2 (concurrency and race condition prevention). Return a concise summary of results and exit status. If tests fail, report the exact failing tier and exit.`
+    };
+
+    const flowWorker = {
+      TypeName: "self",
+      Role: "QA Flow Inspector",
+      Model: "inherit",
+      Workspace: "inherit",
+      Prompt: `Execute Mode 2 QA Flow and Browser UI verification for project "${projectName}" on a DEDICATED ISOLATED CHROME WINDOW.
+
+MANDATORY CHROME WINDOW ISOLATION PROTOCOL:
+1. WINDOW CREATION: DO NOT hijack any existing tab or shared window. Call chrome-devtools-mcp tool \`new_page\` with url: "${initialUrl}" to launch a completely dedicated, isolated browser window. Record the returned page target ID.
+2. TARGET BINDING: Ensure all subsequent chrome-devtools-mcp tool calls (\`select_page\`, \`navigate_page\`, \`click\`, \`fill\`, \`list_console_messages\`, \`list_network_requests\`, \`take_screenshot\`) are strictly targeted to this dedicated page.
+3. VERIFICATION GATES:
+   - Zero console errors (\`list_console_messages\` -> no errors/unhandled rejections/React hydration mismatches).
+   - Zero network 4xx/5xx failures (\`list_network_requests\` -> all background API/XHR requests must succeed).
+   - Verify In-Place Tab Isolation: Actions must execute in modals/drawers without disruptive cross-tab redirects.
+   - Capture screenshots into harness-out/screenshots/${windowSessionId}/.
+4. CLEAN TEARDOWN: When finished (whether PASS or FAIL), ALWAYS call \`close_page\` on your dedicated target ID to close your window and prevent orphaned tab leaks.
+5. Command alternative: You may also run \`agent-harness test:flow\` to execute the automated flow scanner.
+
+Window Session Tag: ${windowSessionId}`
+    };
+
+    return {
+      projectName,
+      strategy: "parallel_swarm",
+      windowSessionId,
+      workers: [codeWorker, flowWorker]
+    };
+  }
+
+  /**
+   * Generates an isolated branch fixer subagent specification
+   */
+  generateFixerWorker(incident = null) {
+    const pack = incident || this.getIncidentPack();
+    const config = this.getConfig() || {};
+    const projectName = config.project || path.basename(this.cwd);
+
+    let incidentDetails = "General test failure detected.";
+    let failingTier = "unknown";
+    if (pack && pack.incidents && pack.incidents.length > 0) {
+      const first = pack.incidents[0];
+      failingTier = first.tier;
+      incidentDetails = `Tier ${first.tier} (${first.name}): ${first.error || 'Failed assertion'}\nTarget: ${first.target || 'N/A'}`;
+    }
+
+    return {
+      TypeName: "self",
+      Role: "QA Branch Fixer",
+      Model: "inherit",
+      Workspace: "branch",
+      Prompt: `You are an isolated self-healing subagent operating in a dedicated branch workspace for project "${projectName}".
+A test failure occurred:
+${incidentDetails}
+
+INSTRUCTIONS:
+1. WORKSPACE ISOLATION: You are running in an isolated branch workspace ('branch'). Your edits will NOT collide with master or concurrent agents.
+2. Read harness-out/INCIDENT_PACK.json for full incident reproduction details.
+3. Inspect ONLY the directly failing file (controller, gateway, component, or schema). Touch ZERO unrelated files.
+4. Apply the minimal atomic fix strictly adhering to project conventions.
+5. Verify your fix locally using \`agent-harness probe:${failingTier}\`.
+6. CIRCUIT BREAKER: Max 3 remediation attempts allowed. If you cannot solve within 3 tries, HALT immediately (exit code 2).
+7. If your fix involves browser verification, strictly use \`new_page\` to spawn a dedicated window and call \`close_page\` when done.
+8. Once verified green, report back your git commit/diff and verification status.`
+    };
+  }
+}

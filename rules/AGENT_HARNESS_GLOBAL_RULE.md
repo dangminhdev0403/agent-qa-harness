@@ -1,16 +1,17 @@
-<!-- AGENT_HARNESS_PROTOCOL_V1: COMPACT MACHINE SPECIFICATION -->
+<!-- AGENT_HARNESS_PROTOCOL_V2: COMPACT MACHINE SPECIFICATION -->
 ## Mandatory Autonomous QA & Living Harness Protocol (Agent Spec)
-
 All AI agents (Antigravity, Codex, Orca) MUST strictly execute this deterministic state machine:
 
 ### 1. TRIGGER HANDLING ("Bật harness" | "kích hoạt harness" | "test harness" | Ambiguous QA request)
-1. **Preflight Sync**: Execute `agent-harness sync`. Harness auto-scans routes, socket gateways, mutations, and creates/upgrades `harness.config.json`.
+1. **Preflight Sync**: Execute `agent-harness sync`. Auto-scans routes, socket gateways, mutations, creates/upgrades `harness.config.json`.
 2. **Disambiguation Gate**: Invoke `ask_question` tool with 4 options:
-   - `(Recommended) Full Dual-Pass Verification (Code Stability + Chrome Flow)`
+   - `(Recommended) Full Dual-Pass Swarm Verification (Code Stability + Dedicated Chrome Flow)`
    - `Mode 1: Code & System Stability Gate (tsc, build, static rules, sockets, concurrency)`
-   - `Mode 2: Chrome DevTools MCP & Browser Flows (0-console, 0-net-4xx/5xx, screenshots)`
+   - `Mode 2: Chrome DevTools MCP & Browser Flows on Dedicated Window (0-console, 0-net-4xx/5xx, screenshots)`
    - `Inspect Synced Map & Current Status Only`
-3. **Dispatch**: Run target command with `--auto-start` (STRICT START ONLY, NEVER DEV) and `--isolate-branch`.
+3. **Subagent Swarm Dispatch (Speed Acceleration)**:
+   - Worker 1 (`QA Code Gatekeeper`, model: flash): `agent-harness test:code --auto-start`.
+   - Worker 2 (`QA Flow Inspector`, model: inherit): Spawn dedicated window via `new_page(url)`, bind with `select_page`, verify flows, teardown with `close_page`. NEVER hijack open tabs.
 
 ### 2. FEATURE DEVELOPMENT SYNC (Living Harness Spec)
 Never finalize code without syncing the harness spec. Before task completion:
@@ -24,6 +25,6 @@ Never finalize code without syncing the harness spec. Before task completion:
 - **Exit Code 2 (CIRCUIT_BREAKER_TRIPPED)**: STOP IMMEDIATELY. Max 3 remediation retries exceeded. DO NOT attempt further automated edits. Report blocker directly to user to prevent multi-agent infinite ping-pong.
 - **Exit Code 1 (FAIL)**:
   1. Read `harness-out/INCIDENT_PACK.json` to extract failure tier, target, and payload.
-  2. Switch to isolated branch: `git checkout -b harness-fix/<target>-<timestamp>`.
-  3. Apply scoped fix strictly to the failing gateway/controller/component.
-  4. Re-run targeted probe: `agent-harness probe:<tier>` until green.
+  2. Launch isolated subagent: `invoke_subagent` (`Role: "QA Branch Fixer"`, `Workspace: "branch"`).
+  3. Apply scoped fix strictly to failing gateway/controller/component.
+  4. Re-run targeted probe: `agent-harness probe:<tier>` until green before merging.

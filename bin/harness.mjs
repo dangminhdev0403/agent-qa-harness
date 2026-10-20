@@ -7,6 +7,7 @@ import { appendScenario, syncDiscoveredToConfig } from '../src/core/scenario-bui
 import { autoDiscoverProject } from '../src/core/auto-discover.mjs';
 import { IsolationManager } from '../src/core/isolation-manager.mjs';
 import { checkAndSyncProject } from '../src/core/smart-sync.mjs';
+import { SubagentDispatcher } from '../src/core/subagent-dispatcher.mjs';
 
 const args = process.argv.slice(2);
 const command = args[0] || 'run';
@@ -34,10 +35,15 @@ CÁC LỆNH TỰ ĐỘNG HÓA & TIỆN ÍCH:
   probe:concurrency    Chỉ chạy Tier 2 (Kiểm tra tranh chấp Concurrency & Idempotency)
   probe:browser        Chỉ chạy Tier 3 (Kiểm tra Route trình duyệt & Lỗi Console)
 
+ĐIỀU PHỐI SUB-AGENTS SONG SONG:
+  subagents:plan       Xuất JSON kế hoạch điều phối 2 Sub-Agents song song (Code Tester + Flow Tester với cửa sổ Chrome riêng biệt)
+  subagents:fix        Xuất JSON cấu hình Sub-Agent tự sửa lỗi trên nhánh cô lập (Workspace: 'branch')
+
 TÙY CHỌN BẢO VỆ & AN TOÀN:
   --auto-start         Tự động khởi động máy chủ bằng START (npm run start) nếu chưa chạy (TUYỆT ĐỐI KHÔNG CHẠY DEV)
   --no-kill            Giữ nguyên máy chủ tiếp tục chạy sau khi test xong (không kill process)
   --isolate-branch     TỰ ĐỘNG TÁCH NHÁNH GIT CÔ LẬP ('harness-fix/...') khi có lỗi để tránh xung đột giữa 2 agents
+  --window-session <id> Gán ID phiên cửa sổ Chrome riêng biệt cho Sub-Agent (ngăn chặn xung đột tab)
   --max-retries <n>    Giới hạn số lần thử sửa lỗi tự động (Mặc định: 3, ngắt mạch chống vòng lặp vô tận)
   --mode <code|flow|all> Chọn chế độ thực thi (mặc định: all)
   --config <đường_dẫn>   Chỉ định file cấu hình harness.config.json tùy chỉnh
@@ -148,6 +154,20 @@ async function main() {
     process.exit(0);
   }
 
+  if (command === 'subagents:plan') {
+    const dispatcher = new SubagentDispatcher(process.cwd());
+    const plan = dispatcher.generateParallelPlan();
+    console.log(JSON.stringify(plan, null, 2));
+    process.exit(0);
+  }
+
+  if (command === 'subagents:fix') {
+    const dispatcher = new SubagentDispatcher(process.cwd());
+    const fixer = dispatcher.generateFixerWorker();
+    console.log(JSON.stringify(fixer, null, 2));
+    process.exit(0);
+  }
+
   if (command.startsWith('add:')) {
     const type = command.replace('add:', '');
     const name = args[1];
@@ -192,6 +212,12 @@ async function main() {
     maxRetries = parseInt(args[maxRetriesIdx + 1], 10) || 3;
   }
 
+  let windowSessionId = null;
+  const wsIdx = args.indexOf('--window-session');
+  if (wsIdx !== -1 && args[wsIdx + 1]) {
+    windowSessionId = args[wsIdx + 1];
+  }
+
   const autoStart = args.includes('--auto-start');
   const noKill = args.includes('--no-kill');
   const isolateBranch = args.includes('--isolate-branch');
@@ -204,6 +230,7 @@ async function main() {
       mode,
       autoStart,
       noKill,
+      windowSessionId,
       maxRemediationAttempts: maxRetries
     });
 
