@@ -33,8 +33,8 @@ export function loadHarnessConfig(cwd = process.cwd(), customPath = null) {
 
   if (!targetFile) {
     throw new Error(
-      `[HarnessConfig] No configuration file found in ${cwd}. ` +
-      `Please create 'harness.config.json' or specify one with --config <path>.`
+      `[HarnessConfig] Không tìm thấy file cấu hình trong ${cwd}. ` +
+      `Hãy chạy 'agent-harness discover' hoặc 'agent-harness init'.`
     );
   }
 
@@ -55,6 +55,19 @@ function sanitizeConfig(config, rootDir) {
     rootDir,
     baseUrl: (config.baseUrl || 'http://localhost:3000').replace(/\/$/, ''),
     timeoutMs: config.timeoutMs || 30000,
+    preflight: {
+      enabled: config.preflight?.enabled ?? true,
+      retries: config.preflight?.retries || 3,
+      delayMs: config.preflight?.delayMs || 1000,
+      healthEndpoint: config.preflight?.healthEndpoint || ''
+    },
+    authProvider: {
+      enabled: config.authProvider?.enabled ?? false,
+      endpoint: config.authProvider?.endpoint || '/api/v1/auth/login',
+      method: config.authProvider?.method || 'POST',
+      credentials: config.authProvider?.credentials || {},
+      tokenPath: config.authProvider?.tokenPath || 'accessToken'
+    },
     static: {
       enabled: config.static?.enabled ?? true,
       commands: config.static?.commands || [
@@ -77,6 +90,7 @@ function sanitizeConfig(config, rootDir) {
       zeroConsoleErrors: config.browser?.zeroConsoleErrors ?? true,
       zeroNetworkErrors: config.browser?.zeroNetworkErrors ?? true,
       routes: config.browser?.routes || [],
+      flows: config.browser?.flows || [],
       captureScreenshots: config.browser?.captureScreenshots ?? true,
       viewport: config.browser?.viewport || { width: 1440, height: 900 }
     },

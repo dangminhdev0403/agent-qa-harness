@@ -1,8 +1,11 @@
+import { interpolateTemplates } from '../core/template-engine.mjs';
+
 /**
  * Universal Realtime Socket Probe Driver
  * Tests real-time connectivity, handshakes, room isolation, and event round-trips.
+ * Supports dynamic template variables and auto-injected fresh JWT tokens.
  */
-export async function runSocketProbe(config) {
+export async function runSocketProbe(config, resolvedAuthToken = null) {
   if (!config.realtime.enabled || config.realtime.scenarios.length === 0) {
     return { skipped: true, reason: 'Realtime testing is disabled or has no scenarios.' };
   }
@@ -15,7 +18,7 @@ export async function runSocketProbe(config) {
     console.log(`  -> Running scenario: "${scenario.name}" (${scenario.description || 'No description'})`);
 
     try {
-      const outcome = await executeScenario(scenario, config);
+      const outcome = await executeScenario(scenario, config, resolvedAuthToken);
       const durationMs = Date.now() - startedAt;
       results.push({
         scenario: scenario.name,
@@ -45,21 +48,21 @@ export async function runSocketProbe(config) {
   };
 }
 
-async function executeScenario(scenario, config) {
+async function executeScenario(scenario, config, resolvedAuthToken) {
   const timeoutMs = scenario.timeoutMs || 5000;
   const baseUrl = config.baseUrl;
   const provider = scenario.provider || config.realtime.provider || 'socket.io';
 
   if (provider === 'socket.io') {
-    return executeSocketIoScenario(scenario, baseUrl, timeoutMs);
+    return executeSocketIoScenario(scenario, baseUrl, timeoutMs, resolvedAuthToken);
   } else if (provider === 'ws') {
-    return executeRawWsScenario(scenario, baseUrl, timeoutMs);
+    return executeRawWsScenario(scenario, baseUrl, timeoutMs, resolvedAuthToken);
   } else {
     throw new Error(`Unsupported realtime provider: ${provider}`);
   }
 }
 
-async function executeSocketIoScenario(scenario, baseUrl, timeoutMs) {
+async function executeSocketIoScenario(scenario, baseUrl, timeoutMs, resolvedAuthToken) {
   let io;
   try {
     const module = await import('socket.io-client');
@@ -71,12 +74,22 @@ async function executeSocketIoScenario(scenario, baseUrl, timeoutMs) {
   }
 
   return new Promise((resolve, reject) => {
-    const { receiver, trigger } = scenario;
-    const socketUrl = `${baseUrl}${receiver.endpoint || ''}`;
+    const receiver = scenario.receiver || {};
+    const trigger = scenario.trigger || null;
+
+    const endpoint = interpolateTemplates(receiver.endpoint || '');
+    const socketUrl = `${baseUrl}${endpoint}`;
+
+    // Merge auth: prefer explicit auth or inject fresh resolvedAuthToken
+    const rawAuth = receiver.auth || {};
+    const authPayload = interpolateTemplates(rawAuth);
+    if (!authPayload.token && resolvedAuthToken) {
+      authPayload.token = resolvedAuthToken;
+    }
 
     const socket = io(socketUrl, {
-      auth: receiver.auth || {},
-      query: receiver.query || {},
+      auth: authPayload,
+      query: interpolateTemplates(receiver.query || {}),
       transports: receiver.transports || ['websocket', 'polling'],
       timeout: timeoutMs,
       reconnection: false
@@ -130,7 +143,7 @@ async function executeSocketIoScenario(scenario, baseUrl, timeoutMs) {
 
       // Once listener is armed, execute the trigger action
       try {
-        await executeTriggerAction(trigger, baseUrl);
+        await executeTriggerAction(trigger, baseUrl, resolvedAuthToken);
       } catch (triggerErr) {
         if (isSettled) return;
         isSettled = true;
@@ -141,7 +154,7 @@ async function executeSocketIoScenario(scenario, baseUrl, timeoutMs) {
   });
 }
 
-async function executeRawWsScenario(scenario, baseUrl, timeoutMs) {
+async function executeRawWsScenario(scenario, baseUrl, timeoutMs, resolvedAuthToken) {
   let WS = globalThis.WebSocket;
   if (!WS) {
     try {
@@ -153,9 +166,18 @@ async function executeRawWsScenario(scenario, baseUrl, timeoutMs) {
   }
 
   return new Promise((resolve, reject) => {
-    const { receiver, trigger } = scenario;
-    const wsUrl = (baseUrl + (receiver.endpoint || '')).replace(/^http/, 'ws');
-    const ws = new WS(wsUrl);
+    const receiver = scenario.receiver || {};
+    const trigger = scenario.trigger || null;
+
+    const endpoint = interpolateTemplates(receiver.endpoint || '');
+    const wsUrl = (baseUrl + endpoint).replace(/^http/, 'ws');
+
+    const headers = interpolateTemplates(receiver.headers || {});
+    if (!headers.Authorization && resolvedAuthToken) {
+      headers.Authorization = resolvedAuthToken;
+    }
+
+    const ws = new WS(wsUrl, { headers });
 
     let timeoutTimer = null;
     let isSettled = false;
@@ -199,7 +221,7 @@ async function executeRawWsScenario(scenario, baseUrl, timeoutMs) {
       });
 
       try {
-        await executeTriggerAction(trigger, baseUrl);
+        await executeTriggerAction(trigger, baseUrl, resolvedAuthToken);
       } catch (triggerErr) {
         if (isSettled) return;
         isSettled = true;
@@ -210,21 +232,25 @@ async function executeRawWsScenario(scenario, baseUrl, timeoutMs) {
   });
 }
 
-async function executeTriggerAction(trigger, baseUrl) {
+async function executeTriggerAction(trigger, baseUrl, resolvedAuthToken) {
   if (!trigger) return;
 
   if (trigger.type === 'http') {
-    const url = trigger.url || `${baseUrl}${trigger.path || ''}`;
+    const rawUrl = trigger.url || `${baseUrl}${trigger.path || ''}`;
+    const url = interpolateTemplates(rawUrl);
     const method = (trigger.method || 'POST').toUpperCase();
     const headers = {
       'Content-Type': 'application/json',
-      ...(trigger.headers || {})
+      ...(resolvedAuthToken ? { 'Authorization': resolvedAuthToken } : {}),
+      ...(trigger.headers ? interpolateTemplates(trigger.headers) : {})
     };
+
+    const body = trigger.body ? JSON.stringify(interpolateTemplates(trigger.body)) : undefined;
 
     const res = await fetch(url, {
       method,
       headers,
-      body: trigger.body ? JSON.stringify(trigger.body) : undefined
+      body
     });
 
     if (!res.ok && !trigger.allowHttpError) {

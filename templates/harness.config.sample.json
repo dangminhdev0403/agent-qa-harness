@@ -1,9 +1,27 @@
 {
-  "$schema": "./node_modules/agents-testing-with-workflow/schema/harness.schema.json",
+  "$schema": "./node_modules/agent-qa-harness/schema/harness.schema.json",
   "project": "my-application",
   "baseUrl": "http://localhost:3000",
   "timeoutMs": 30000,
   "outputDir": "harness-out",
+
+  "preflight": {
+    "enabled": true,
+    "retries": 3,
+    "delayMs": 1000,
+    "healthEndpoint": "/api/health"
+  },
+
+  "authProvider": {
+    "enabled": false,
+    "endpoint": "/api/v1/auth/login",
+    "method": "POST",
+    "credentials": {
+      "email": "test-admin@example.com",
+      "password": "secretPassword123"
+    },
+    "tokenPath": "data.accessToken"
+  },
 
   "static": {
     "enabled": true,
@@ -28,7 +46,6 @@
         "description": "Verifies that when an order is created, the staff socket receives ORDER_CREATED event",
         "receiver": {
           "endpoint": "/staff-ops",
-          "auth": { "token": "Bearer test-jwt-token", "role": "STAFF" },
           "listenEvent": "ORDER_CREATED",
           "assertPayload": {
             "status": "PENDING"
@@ -39,7 +56,8 @@
           "method": "POST",
           "path": "/api/v1/orders",
           "body": {
-            "customerId": "cust-test-1",
+            "orderNumber": "ORD-{{timestamp}}",
+            "customerId": "cust-{{shortId}}",
             "items": [{ "sku": "ITEM-1", "quantity": 2 }]
           }
         },
@@ -53,12 +71,9 @@
     "scenarios": [
       {
         "name": "anti-double-approval-gate",
-        "description": "Fires 5 simultaneous approvals for the same transaction - exactly 1 must succeed",
+        "description": "Fires 5 simultaneous approvals with dynamic order ID - exactly 1 must succeed",
         "method": "POST",
-        "path": "/api/v1/orders/ORD-TEST-001/approve",
-        "headers": {
-          "Authorization": "Bearer admin-token"
-        },
+        "path": "/api/v1/orders/ORD-{{timestamp}}/approve",
         "concurrentBurst": 5,
         "injectRequestId": true,
         "assert": {
@@ -78,10 +93,17 @@
       {
         "path": "/dashboard",
         "waitForSelector": "[data-testid='metrics-grid']"
-      },
+      }
+    ],
+    "flows": [
       {
-        "path": "/orders",
-        "waitForSelector": "table"
+        "name": "luong-tao-khach-hang-moi",
+        "steps": [
+          { "action": "navigate", "url": "/customers/new" },
+          { "action": "fill", "selector": "input[name='email']", "value": "guest-{{timestamp}}@test.com" },
+          { "action": "waitFor", "durationMs": 300 },
+          { "action": "assertNoErrors" }
+        ]
       }
     ]
   }

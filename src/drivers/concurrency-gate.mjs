@@ -1,8 +1,11 @@
+import { interpolateTemplates } from '../core/template-engine.mjs';
+
 /**
  * Universal Concurrency & Idempotency Gate Driver
  * Validates state transitions, prevents double-approvals, and tests race-condition invariants.
+ * Supports dynamic template variables ({{timestamp}}, {{uuid}}) to prevent database pollution.
  */
-export async function runConcurrencyGate(config) {
+export async function runConcurrencyGate(config, resolvedAuthToken = null) {
   if (!config.concurrency.enabled || config.concurrency.scenarios.length === 0) {
     return { skipped: true, reason: 'Concurrency testing is disabled or has no scenarios.' };
   }
@@ -15,7 +18,7 @@ export async function runConcurrencyGate(config) {
     console.log(`  -> Running concurrency burst: "${scenario.name}" (${scenario.description || 'No description'})`);
 
     try {
-      const outcome = await executeBurst(scenario, config.baseUrl);
+      const outcome = await executeBurst(scenario, config.baseUrl, resolvedAuthToken);
       const durationMs = Date.now() - startedAt;
       results.push({
         scenario: scenario.name,
@@ -44,26 +47,33 @@ export async function runConcurrencyGate(config) {
   };
 }
 
-async function executeBurst(scenario, baseUrl) {
+async function executeBurst(scenario, baseUrl, resolvedAuthToken) {
   const burstCount = scenario.concurrentBurst || 5;
-  const url = scenario.url || `${baseUrl}${scenario.path || ''}`;
+
+  // Apply template interpolation for dynamic URL / Path (e.g. /orders/ORD-{{timestamp}}/approve)
+  const interpolatedPath = interpolateTemplates(scenario.path || '');
+  const url = scenario.url ? interpolateTemplates(scenario.url) : `${baseUrl}${interpolatedPath}`;
   const method = (scenario.method || 'POST').toUpperCase();
-  const headers = {
+
+  const baseHeaders = {
     'Content-Type': 'application/json',
-    ...(scenario.headers || {})
+    ...(resolvedAuthToken ? { 'Authorization': resolvedAuthToken } : {}),
+    ...(scenario.headers ? interpolateTemplates(scenario.headers) : {})
   };
-  const body = scenario.body ? JSON.stringify(scenario.body) : undefined;
+
+  const bodyTemplate = scenario.body;
 
   // Prepare simultaneous request promises
   const promises = Array.from({ length: burstCount }, async (_, idx) => {
-    const reqHeaders = { ...headers };
-    // Optionally inject a client request id if configured
+    const reqHeaders = { ...baseHeaders };
     if (scenario.injectRequestId) {
       reqHeaders['X-Client-Request-Id'] = `burst-${idx}-${Date.now()}`;
     }
 
+    const reqBody = bodyTemplate ? JSON.stringify(interpolateTemplates(bodyTemplate)) : undefined;
+
     try {
-      const res = await fetch(url, { method, headers: reqHeaders, body });
+      const res = await fetch(url, { method, headers: reqHeaders, body: reqBody });
       const text = await res.text().catch(() => '');
       return { status: res.status, body: text.slice(0, 200) };
     } catch (fetchErr) {
@@ -100,6 +110,7 @@ async function executeBurst(scenario, baseUrl) {
   }
 
   return {
+    targetUrl: url,
     totalBurst: burstCount,
     statusCounts,
     sampleResponses: responses.slice(0, 2)

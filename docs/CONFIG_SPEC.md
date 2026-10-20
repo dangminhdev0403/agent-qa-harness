@@ -30,10 +30,51 @@
 | `baseUrl` | `string` | `"http://localhost:3000"` | Địa chỉ gốc của server đang chạy (Next.js, NestJS, Express, FastAPI...). |
 | `timeoutMs` | `number` | `30000` | Thời gian timeout tối đa cho mỗi lệnh kiểm thử (mili-giây). |
 | `outputDir` | `string` | `"harness-out"` | Thư mục lưu trữ kết quả kiểm thử, ảnh chụp màn hình và gói sự cố `INCIDENT_PACK.json`. |
+| `preflight` | `object` | `{ enabled: true }` | Kiểm tra kết nối và chờ server sẵn sàng trước khi test. |
+| `authProvider` | `object` | `{ enabled: false }` | Tự động đăng nhập lấy JWT Token tươi trước khi chạy test. |
 | `static` | `object` | `{ enabled: true }` | Cấu hình kiểm tra tĩnh Tier 0 (UI rules, ESLint, Zod contracts, Typecheck). |
 | `realtime` | `object` | `{ enabled: false }` | Cấu hình kiểm tra Realtime Socket Tier 1 (Socket.io hoặc Native WebSocket). |
 | `concurrency` | `object` | `{ enabled: false }` | Cấu hình kiểm tra tranh chấp / Race Condition Tier 2 (Duyệt đơn, thanh toán). |
 | `browser` | `object` | `{ enabled: false }` | Cấu hình kiểm tra giao diện và kịch bản người dùng Tier 3 (Chrome / Web). |
+
+---
+
+## 2. Động Hóa Biến Mẫu (Dynamic Template Variables)
+
+Hệ thống hỗ trợ tự động thay thế biến động trong **URL, Path, Headers, Body, Input selectors** để đảm bảo kiểm thử nhiều lần không bị trùng lặp dữ liệu:
+
+- `{{timestamp}}`: Timestamp hiện tại dạng mili-giây (ví dụ: `1729472345678`).
+- `{{uuid}}`: Chuỗi UUID ngẫu nhiên v4.
+- `{{shortId}}`: Chuỗi ngẫu nhiên 8 ký tự hex (ví dụ: `a3f9c012`).
+- `{{randomInt}}`: Số nguyên ngẫu nhiên từ 1000 đến 9999.
+- `{{date}}`: Ngày hiện tại dạng `YYYY-MM-DD`.
+- `{{env:TÊN_BIẾN}}`: Đọc giá trị từ biến môi trường `process.env.TÊN_BIẾN`.
+
+*Ví dụ sử dụng:*  
+`"path": "/api/v1/orders/ORD-{{timestamp}}/approve"` $\rightarrow$ Không bao giờ bị lỗi "đơn đã duyệt" khi chạy lại nhiều lần!
+
+---
+
+## 3. Cấu Hình `preflight` & `authProvider`
+
+```json
+"preflight": {
+  "enabled": true,
+  "retries": 3,
+  "delayMs": 1000,
+  "healthEndpoint": "/health"
+},
+"authProvider": {
+  "enabled": true,
+  "endpoint": "/api/v1/auth/login",
+  "method": "POST",
+  "credentials": {
+    "email": "admin@vietsage.vn",
+    "password": "{{env:ADMIN_PASSWORD}}"
+  },
+  "tokenPath": "data.accessToken"
+}
+```
 
 ---
 

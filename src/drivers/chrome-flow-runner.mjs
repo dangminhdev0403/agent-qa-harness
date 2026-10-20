@@ -1,10 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { interpolateTemplates } from '../core/template-engine.mjs';
 
 /**
  * Universal Chrome Interactive Flow Runner
  * Executes multi-step user flows (click, fill, wait, assert, screenshot)
  * and bridges seamlessly with Chrome DevTools MCP.
+ * Supports dynamic template variables in URLs, inputs, and selectors.
  */
 export async function runChromeFlows(config) {
   const flows = config.browser?.flows || [];
@@ -56,12 +58,14 @@ export async function runChromeFlows(config) {
 
 async function executeFlowSteps(flow, config, outputDir) {
   const baseUrl = config.baseUrl;
-  const steps = flow.steps || [];
+  const rawSteps = flow.steps || [];
 
-  if (steps.length === 0) {
+  if (rawSteps.length === 0) {
     throw new Error(`Flow "${flow.name}" không có bước thao tác nào.`);
   }
 
+  // Interpolate dynamic template variables in all steps
+  const steps = interpolateTemplates(rawSteps);
   let stepsExecuted = 0;
 
   for (const [idx, step] of steps.entries()) {

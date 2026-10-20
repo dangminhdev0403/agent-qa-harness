@@ -5,9 +5,11 @@ import { runConcurrencyGate } from './drivers/concurrency-gate.mjs';
 import { runChromeScanner } from './drivers/chrome-scanner.mjs';
 import { packageIncidentAndSummary } from './reporters/incident-packager.mjs';
 import { generateMarkdownReport } from './reporters/markdown-reporter.mjs';
+import { waitForServerReady } from './core/preflight-waiter.mjs';
+import { resolveAuthToken } from './core/auth-provider.mjs';
 
 /**
- * Runs the autonomous harness pipeline under 2 distinct modes:
+ * Runs the autonomous harness pipeline under 2 distinct modes with bulletproof guards:
  * - 'code': Test code stability (typecheck, build, static gates, socket & concurrency)
  * - 'flow': Test interactive browser flows & Chrome DevTools UI
  * - 'all': Full dual-pass execution
@@ -29,6 +31,18 @@ export async function executeHarness(options = {}) {
   console.log(` Mode: ${mode.toUpperCase()} | Working Directory: ${config.rootDir}`);
   console.log(`======================================================`);
 
+  // PREFLIGHT 1: Kiểm tra kết nối máy chủ nếu kịch bản cần gửi request HTTP/Socket
+  const needsNetwork = (mode === 'all' || mode === 'flow' || (mode === 'code' && (config.realtime.enabled || config.concurrency.enabled)));
+  if (needsNetwork && config.preflight?.enabled) {
+    await waitForServerReady(config.baseUrl, config.preflight);
+  }
+
+  // PREFLIGHT 2: Tự động lấy token JWT tươi nếu cấu hình authProvider
+  let resolvedAuthToken = null;
+  if (config.authProvider?.enabled) {
+    resolvedAuthToken = await resolveAuthToken(config);
+  }
+
   let staticResults = { skipped: true, reason: 'Không nằm trong chế độ được chọn' };
   let realtimeResults = { skipped: true, reason: 'Không nằm trong chế độ được chọn' };
   let concurrencyResults = { skipped: true, reason: 'Không nằm trong chế độ được chọn' };
@@ -43,11 +57,11 @@ export async function executeHarness(options = {}) {
     }
 
     if (!targetTier || targetTier === '1' || targetTier === 'realtime' || targetTier === 'socket') {
-      realtimeResults = await runSocketProbe(config);
+      realtimeResults = await runSocketProbe(config, resolvedAuthToken);
     }
 
     if (!targetTier || targetTier === '2' || targetTier === 'concurrency') {
-      concurrencyResults = await runConcurrencyGate(config);
+      concurrencyResults = await runConcurrencyGate(config, resolvedAuthToken);
     }
   }
 
@@ -73,5 +87,7 @@ export {
   runConcurrencyGate,
   runChromeScanner,
   packageIncidentAndSummary,
-  generateMarkdownReport
+  generateMarkdownReport,
+  waitForServerReady,
+  resolveAuthToken
 };
