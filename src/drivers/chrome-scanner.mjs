@@ -1,4 +1,5 @@
 import { runChromeFlows } from './chrome-flow-runner.mjs';
+import { resolveDynamicRoute } from '../core/prerequisite-inspector.mjs';
 
 if (!process.env.NODE_TLS_REJECT_UNAUTHORIZED) {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -24,7 +25,8 @@ export async function runChromeScanner(config, options = {}) {
     console.log(`\n[Chrome Scanner] Quét ${config.browser.routes.length} route tĩnh & kiểm tra lỗi HTTP...`);
     for (const routeItem of config.browser.routes) {
       const routePath = typeof routeItem === 'string' ? routeItem : routeItem.path;
-      const fullUrl = `${baseUrl}${routePath}`;
+      const resolvedRoute = resolveDynamicRoute(routePath, config.fixtures || {});
+      const fullUrl = `${baseUrl}${resolvedRoute}`;
       const startedAt = Date.now();
 
       console.log(`  -> Thăm dò route: ${fullUrl}`);

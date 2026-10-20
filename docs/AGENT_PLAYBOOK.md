@@ -7,9 +7,11 @@
 ```text
 [Prompt Received]
   ├── Trigger matches ("Bật harness" | "test harness" | ambiguous test intent)?
-  │     ├── 1. EXEC: `agent-harness sync` (Auto-discover routes/sockets/mutations).
-  │     ├── 2. CALL: `ask_question` tool with 4 options (Dual-Pass, Mode 1 Code, Mode 2 Flow, Status).
-  │     └── 3. SUBAGENT SWARM DISPATCH (Accelerated parallel execution):
+  │     ├── 1. EXEC: `agent-harness sync` (Auto-discover routes/sockets/mutations/portless).
+  │     ├── 2. PREFLIGHT PREREQUISITE AUDIT: `agent-harness audit:prerequisites`.
+  │     │       └── Missing Auth Wall credentials or Dynamic Fixtures? -> HALT & PROMPT USER. Never run superficial tests.
+  │     ├── 3. CALL: `ask_question` tool with 4 options (Dual-Pass, Mode 1 Code, Mode 2 Flow, Status).
+  │     └── 4. SUBAGENT SWARM DISPATCH (Accelerated parallel execution):
   │              ├── Worker 1 (flash): `agent-harness test:code --auto-start`
   │              └── Worker 2 (inherit): `agent-harness test:flow` on dedicated Chrome window (`new_page`)
   ├── Feature Code Finished?

@@ -29,3 +29,11 @@ Never finalize code without syncing the harness spec. Before task completion:
   2. Launch isolated subagent: `invoke_subagent` (`Role: "QA Branch Fixer"`, `Workspace: "branch"`).
   3. Apply scoped fix strictly to failing gateway/controller/component.
   4. Re-run targeted probe: `agent-harness probe:<tier>` until green before merging.
+
+### 4. PREREQUISITE INSPECTION & ASK-BEFORE-PROCEED INVARIANT (ANTI-SUPERFICIALITY GATE)
+STRICT INVARIANT: Agents are FORBIDDEN from executing shallow/superficial partial tests (e.g. testing only unauthenticated landing pages when requested to test full project features) and falsely declaring full verification.
+1. **Preflight Audit**: Before executing Mode 2 or full runs, execute `agent-harness audit:prerequisites`.
+2. **Missing Prerequisite Check**: If routes require authentication (/owner, /hotels, /admin, /staff) but credentials/personas are missing, or dynamic parameters ([hotelId], [qrCode]) lack fixture substitutions:
+   - DO NOT silently fall back to testing only public pages.
+   - HALT AND ASK: Explicitly prompt user (via `ask_question` or inquiry) to provide credentials/fixtures or authorize automated test fixture seeding.
+3. **Execution Gate**: Only proceed to full suite execution once all necessary prerequisites are satisfied or user explicitly grants `--force` bypass.

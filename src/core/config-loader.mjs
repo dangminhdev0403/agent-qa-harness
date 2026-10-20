@@ -96,6 +96,8 @@ function sanitizeConfig(config, rootDir) {
       enabled: config.concurrency?.enabled ?? false,
       scenarios: config.concurrency?.scenarios || []
     },
+    fixtures: config.fixtures || {},
+    personas: config.personas || {},
     browser: {
       enabled: config.browser?.enabled ?? false,
       zeroConsoleErrors: config.browser?.zeroConsoleErrors ?? true,

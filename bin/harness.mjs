@@ -8,6 +8,8 @@ import { autoDiscoverProject } from '../src/core/auto-discover.mjs';
 import { IsolationManager } from '../src/core/isolation-manager.mjs';
 import { checkAndSyncProject } from '../src/core/smart-sync.mjs';
 import { SubagentDispatcher } from '../src/core/subagent-dispatcher.mjs';
+import { loadHarnessConfig } from '../src/core/config-loader.mjs';
+import { inspectPrerequisites } from '../src/core/prerequisite-inspector.mjs';
 
 const args = process.argv.slice(2);
 const command = args[0] || 'run';
@@ -35,12 +37,17 @@ CÁC LỆNH TỰ ĐỘNG HÓA & TIỆN ÍCH:
   probe:concurrency    Chỉ chạy Tier 2 (Kiểm tra tranh chấp Concurrency & Idempotency)
   probe:browser        Chỉ chạy Tier 3 (Kiểm tra Route trình duyệt & Lỗi Console)
 
+KIỂM TRA ĐIỀU KIỆN TIÊN QUYẾT (CHỐNG TEST QUA LOA):
+  audit:prerequisites  Kiểm tra toàn diện điều kiện tiên quyết (Auth Wall, Fixtures, DB) trước khi test sâu
+  check:prereq         Viết tắt của audit:prerequisites
+
 ĐIỀU PHỐI SUB-AGENTS SONG SONG:
   subagents:plan       Xuất JSON kế hoạch điều phối 2 Sub-Agents song song (Code Tester + Flow Tester với cửa sổ Chrome riêng biệt)
   subagents:personas   Xuất JSON kế hoạch Swarm Đa Persona (Khách vãng lai, Lễ tân, Chủ khách sạn trên 3 cửa sổ Chrome riêng biệt)
   subagents:fix        Xuất JSON cấu hình Sub-Agent tự sửa lỗi trên nhánh cô lập (Workspace: 'branch')
 
 TÙY CHỌN BẢO VỆ & AN TOÀN:
+  --force              Bỏ qua kiểm tra điều kiện tiên quyết và ép chạy tiếp
   --auto-start         Tự động khởi động máy chủ bằng START (npm run start) nếu chưa chạy (TUYỆT ĐỐI KHÔNG CHẠY DEV)
   --no-kill            Giữ nguyên máy chủ tiếp tục chạy sau khi test xong (không kill process)
   --isolate-branch     TỰ ĐỘNG TÁCH NHÁNH GIT CÔ LẬP ('harness-fix/...') khi có lỗi để tránh xung đột giữa 2 agents
@@ -176,6 +183,13 @@ async function main() {
     process.exit(0);
   }
 
+  if (command === 'audit:prerequisites' || command === 'check:prereq') {
+    const config = loadHarnessConfig(process.cwd());
+    const report = inspectPrerequisites(config);
+    console.log(JSON.stringify(report, null, 2));
+    process.exit(report.isComplete ? 0 : 3);
+  }
+
   if (command.startsWith('add:')) {
     const type = command.replace('add:', '');
     const name = args[1];
@@ -229,6 +243,27 @@ async function main() {
   const autoStart = args.includes('--auto-start');
   const noKill = args.includes('--no-kill');
   const isolateBranch = args.includes('--isolate-branch');
+  const force = args.includes('--force');
+
+  // Kiểm tra điều kiện tiên quyết (Anti-Superficiality Gate)
+  if ((mode === 'flow' || mode === 'all') && !force) {
+    try {
+      const currentConfig = loadHarnessConfig(process.cwd(), configPath);
+      const prereq = inspectPrerequisites(currentConfig);
+      if (!prereq.isComplete) {
+        console.warn(`\n======================================================`);
+        console.warn(` ⚠️ CẢNH BÁO: THIẾU ĐIỀU KIỆN TIÊN QUYẾT ĐỂ TEST FULL`);
+        console.warn(` (Nguyên tắc chống test qua loa / Anti-Superficiality)`);
+        console.warn(`======================================================`);
+        for (const m of prereq.missing) {
+          console.warn(` • [${m.type}] ${m.title}`);
+          console.warn(`   -> ${m.description}`);
+          console.warn(`   -> Khắc phục: ${m.actionRequired}\n`);
+        }
+        console.warn(`Thêm cờ '--force' nếu muốn ép chạy chỉ các trang công khai.\n`);
+      }
+    } catch {}
+  }
 
   try {
     const { overallPassed, circuitBreakerTripped } = await executeHarness({

@@ -14,12 +14,13 @@
 2. [2 Chế Độ Kiểm Thử Riêng Biệt & Cơ Chế Khử Mơ Hồ](#-2-chế-độ-kiểm-thử-riêng-biệt)
 3. [4 Tấm Khiên Bảo Vệ Đột Phá (Bulletproof Protections)](#-4-tấm-khiên-bảo-vệ-đột-phá-bulletproof)
 4. [Tăng Tốc Với Sub-Agents & Cô Lập Cửa Sổ Chrome Riêng Biệt](#-tăng-tốc-với-sub-agents--cô-lập-cửa-sổ-chrome-riêng-biệt)
-5. [Nguyên Tắc Bất Biến: Living Harness Contract](#-nguyên-tắc-bất-biến-living-harness-contract)
-6. [Kiến Trúc Kiểm Thử 4 Tầng](#-kiến-trúc-kiểm-thử-đa-tầng-4-tier-test-architecture)
-7. [Bắt Đầu Nhanh (Quickstart 60 Giây)](#-bắt-đầu-nhanh-áp-dụng-cho-mọi-repo-trong-60-giây)
-8. [Tích Hợp Archon Workflow DAG](#-tích-hợp-archon-workflow-dag)
-9. [Bảng Tra Cứu Lệnh CLI Toàn Cục](#-bảng-tra-cứu-lệnh-cli-toàn-cục)
-10. [Tài Liệu Chi Tiết](#-tài-liệu-chi-tiết)
+5. [Nguyên Tắc Bất Biến: Chống Kiểm Thử Nửa Vời & Tự Động Hỏi Khi Thiếu Điều Kiện](#-nguyên-tắc-bất-biến-chống-kiểm-thử-nửa-vời--tự-động-hỏi-khi-thiếu-điều-kiện)
+6. [Nguyên Tắc Bất Biến: Living Harness Contract](#-nguyên-tắc-bất-biến-living-harness-contract)
+7. [Kiến Trúc Kiểm Thử 4 Tầng](#-kiến-trúc-kiểm-thử-đa-tầng-4-tier-test-architecture)
+8. [Bắt Đầu Nhanh (Quickstart 60 Giây)](#-bắt-đầu-nhanh-áp-dụng-cho-mọi-repo-trong-60-giây)
+9. [Tích Hợp Archon Workflow DAG](#-tích-hợp-archon-workflow-dag)
+10. [Bảng Tra Cứu Lệnh CLI Toàn Cục](#-bảng-tra-cứu-lệnh-cli-toàn-cục)
+11. [Tài Liệu Chi Tiết](#-tài-liệu-chi-tiết)
 
 ---
 
@@ -132,6 +133,30 @@ agent-harness subagents:personas
 # Lấy cấu hình Sub-Agent tự sửa lỗi trên nhánh cô lập
 agent-harness subagents:fix
 ```
+
+---
+
+## 🚫 Nguyên Tắc Bất Biến: Chống Kiểm Thử Nửa Vời & Tự Động Hỏi Khi Thiếu Điều Kiện (Anti-Superficiality)
+
+> **QUY CHUẨN ĐẠO ĐỨC & CHẤT LƯỢNG CHO AI AGENTS:**  
+> **Nghiêm cấm tuyệt đối việc chỉ chạy vài trang tĩnh công khai (Landing page, About) rồi báo cáo là "Đã kiểm thử toàn bộ dự án".**
+
+Khi người dùng yêu cầu kiểm thử toàn bộ hệ thống hoặc các tính năng nghiệp vụ sâu:
+
+### 1. Cơ Chế Tự Động Rà Soát Điều Kiện Tiên Quyết
+```bash
+agent-harness audit:prerequisites
+```
+Lệnh này quét toàn bộ cấu hình dự án để phát hiện 3 rào cản:
+1. **Bức tường Đăng nhập (Auth Wall)**: Bao nhiêu route yêu cầu phiên đăng nhập (`/owner`, `/hotels`, `/admin`, `/staff`). Nếu chưa cấu hình tài khoản test $\rightarrow$ **Cảnh báo ngay lập tức**.
+2. **Bản đồ Tham số Động (Dynamic Fixtures)**: Bao nhiêu route chứa tham số trong ngoặc vuông (`[hotelId]`, `[qrCode]`, `[invoiceId]`). Nếu chưa có giá trị thay thế trong `config.fixtures` $\rightarrow$ **Cảnh báo nguy cơ lỗi 404**.
+3. **Dữ liệu Mẫu Cơ sở Dữ liệu (Database State)**: Đã có phòng mẫu, khách sạn mẫu và mã QR phòng hợp lệ để kiểm thử hay chưa.
+
+### 2. Quy Chuẩn "Dừng Lại & Hỏi" (Ask Before Proceed)
+- Nếu **THIẾU BẤT KỲ YẾU TỐ NÀO**, Agent **BẮT BUỘC PHẢI DỪNG LẠI VÀ HỎI NGƯỜI DÙNG** (qua modal `ask_question` hoặc câu hỏi cụ thể) để:
+  - Yêu cầu cung cấp tài khoản test hoặc mật khẩu của các vai trò cần kiểm thử.
+  - Hoặc xin phép chạy lệnh seed dữ liệu mẫu tự động (`pnpm run seed:...`).
+- Tuyệt đối KHÔNG tự ý chạy một phần qua loa rồi đánh lừa người dùng là đã kiểm thử xong toàn bộ.
 
 ---
 
@@ -321,6 +346,7 @@ archon run .archon/workflows/universal-qa-harness.yaml
 | `agent-harness probe:socket` | Chạy riêng rẽ Tier 1 (Realtime Socket Probe) |
 | `agent-harness probe:concurrency` | Chạy riêng rẽ Tier 2 (Concurrency Gate) |
 | `agent-harness probe:browser` | Chạy riêng rẽ Tier 3 (Chrome & Route Scanner) |
+| `agent-harness audit:prerequisites` | **[Chống test qua loa]** Rà soát điều kiện tiên quyết (Auth Wall, Fixtures, DB) trước khi test sâu |
 | `agent-harness subagents:plan` | Xuất JSON kế hoạch điều phối 2 Sub-Agents song song (Code Tester + Flow Tester với cửa sổ Chrome riêng biệt) |
 | `agent-harness subagents:personas` | Xuất JSON kế hoạch Swarm Đa Persona (Khách vãng lai, Lễ tân, Chủ khách sạn trên 3 cửa sổ Chrome riêng biệt) |
 | `agent-harness subagents:fix` | Xuất JSON cấu hình Sub-Agent tự sửa lỗi trên nhánh cô lập (Workspace: 'branch') |
