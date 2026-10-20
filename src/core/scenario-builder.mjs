@@ -96,6 +96,25 @@ export function syncDiscoveredToConfig(cwd, discovered) {
   let addedCount = 0;
   let upgradedCount = 0;
 
+  // 0. Đồng bộ cấu hình máy chủ & tên miền Portless nếu phát hiện
+  if (discovered.server) {
+    if (!config.baseUrl || config.baseUrl.includes('localhost:3000')) {
+      config.baseUrl = discovered.server.baseUrl;
+    }
+    if (!config.server) config.server = {};
+    if (!config.server.startCommand || config.server.startCommand === 'npm run start') {
+      config.server.startCommand = discovered.server.startCommand;
+    }
+    if (!config.server.devCommand) {
+      config.server.devCommand = discovered.server.devCommand;
+    }
+    config.server.port = discovered.server.port;
+    if (discovered.server.isPortless) {
+      config.server.proxy = "portless";
+      config.server.appName = discovered.server.appName;
+    }
+  }
+
   // 1. Đồng bộ Routes vào browser
   if (!config.browser) config.browser = { enabled: true, routes: [], flows: [] };
   if (!config.browser.routes) config.browser.routes = [];

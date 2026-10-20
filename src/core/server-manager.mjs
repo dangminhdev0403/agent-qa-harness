@@ -3,6 +3,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import util from 'node:util';
 import { waitForServerReady } from './preflight-waiter.mjs';
+import { discoverServerConfig } from './auto-discover.mjs';
+
+// Vô hiệu hóa từ chối chứng chỉ tự ký của portless (*.localhost)
+if (!process.env.NODE_TLS_REJECT_UNAUTHORIZED) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
 
 const execAsync = util.promisify(exec);
 
@@ -18,10 +24,13 @@ export async function ensureServerRunning(config, options = {}) {
   const baseUrl = config.baseUrl;
   const isAutoStart = options.autoStart ?? config.server?.autoStart ?? false;
 
-  // 1. Kiểm tra nhanh xem server đã chạy sẵn chưa
-  const isAlive = await probeServerFast(baseUrl);
+  // 1. Kiểm tra nhanh xem server đã chạy sẵn chưa (thử cả baseUrl lẫn localhost fallback)
+  let isAlive = await probeServerFast(baseUrl);
+  if (!isAlive && config.server?.port) {
+    isAlive = await probeServerFast(`http://localhost:${config.server.port}`);
+  }
   if (isAlive) {
-    console.log(`[Server Manager] Máy chủ đã chạy sẵn tại: ${baseUrl}.\n`);
+    console.log(`[Server Manager] Máy chủ đã chạy sẵn và phản hồi tốt tại: ${baseUrl}.\n`);
     return null;
   }
 
@@ -112,6 +121,13 @@ async function probeServerFast(baseUrl) {
 }
 
 function resolveDefaultStartCommand(rootDir) {
+  try {
+    const discovered = discoverServerConfig(rootDir);
+    if (discovered && discovered.startCommand) {
+      return discovered.startCommand;
+    }
+  } catch {}
+
   if (fs.existsSync(path.join(rootDir, 'pnpm-lock.yaml'))) return 'pnpm start';
   if (fs.existsSync(path.join(rootDir, 'yarn.lock'))) return 'yarn start';
   return 'npm run start';

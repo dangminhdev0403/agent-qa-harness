@@ -50,10 +50,15 @@ export function loadHarnessConfig(cwd = process.cwd(), customPath = null) {
 }
 
 function sanitizeConfig(config, rootDir) {
+  const baseUrl = (config.baseUrl || 'http://localhost:3000').replace(/\/$/, '');
+  if (baseUrl.includes('.localhost') || baseUrl.includes('127.0.0.1')) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+  }
+
   return {
     project: config.project || path.basename(rootDir),
     rootDir,
-    baseUrl: (config.baseUrl || 'http://localhost:3000').replace(/\/$/, ''),
+    baseUrl,
     timeoutMs: config.timeoutMs || 30000,
     server: {
       autoStart: config.server?.autoStart ?? false,

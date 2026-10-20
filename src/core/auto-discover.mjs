@@ -11,14 +11,18 @@ export async function autoDiscoverProject(rootDir) {
   const discovered = {
     routes: [],
     socketGateways: [],
-    mutationEndpoints: []
+    mutationEndpoints: [],
+    server: discoverServerConfig(rootDir)
   };
 
   scanDirectory(rootDir, rootDir, discovered);
 
   console.log(`   Đã tìm thấy ${discovered.routes.length} route giao diện.`);
   console.log(`   Đã tìm thấy ${discovered.socketGateways.length} cổng realtime socket/gateway.`);
-  console.log(`   Đã tìm thấy ${discovered.mutationEndpoints.length} endpoint nghiệp vụ quan trọng.\n`);
+  console.log(`   Đã tìm thấy ${discovered.mutationEndpoints.length} endpoint nghiệp vụ quan trọng.`);
+  if (discovered.server) {
+    console.log(`   Phát hiện máy chủ: ${discovered.server.baseUrl} (Lệnh start: "${discovered.server.startCommand}", Proxy: ${discovered.server.isPortless ? 'portless' : 'none'})\n`);
+  }
 
   return discovered;
 }
@@ -109,4 +113,89 @@ function analyzeSourceFile(filePath, discovered) {
       });
     }
   } catch {}
+}
+
+
+/**
+ * Inspects package.json files across root and submodules to detect
+ * the exact start/dev scripts, portless domains, and ports.
+ */
+export function discoverServerConfig(rootDir) {
+  const runner = fs.existsSync(path.join(rootDir, 'pnpm-lock.yaml')) ? 'pnpm' :
+                 fs.existsSync(path.join(rootDir, 'yarn.lock')) ? 'yarn' : 'npm';
+
+  const serverConfig = {
+    baseUrl: "http://localhost:3000",
+    startCommand: `${runner} run start`,
+    devCommand: `${runner} run dev`,
+    port: 3000,
+    isPortless: false,
+    appName: null
+  };
+
+  const packageJsonCandidates = [];
+  const rootPkg = path.join(rootDir, 'package.json');
+  if (fs.existsSync(rootPkg)) {
+    packageJsonCandidates.push({ file: rootPkg, relDir: '.' });
+  }
+
+  const subDirs = ['frontends', 'services', 'apps', 'packages'];
+  for (const sub of subDirs) {
+    const fullSub = path.join(rootDir, sub);
+    if (fs.existsSync(fullSub) && fs.statSync(fullSub).isDirectory()) {
+      try {
+        const items = fs.readdirSync(fullSub, { withFileTypes: true });
+        for (const item of items) {
+          if (item.isDirectory()) {
+            const pkg = path.join(fullSub, item.name, 'package.json');
+            if (fs.existsSync(pkg)) {
+              packageJsonCandidates.push({ file: pkg, relDir: path.join(sub, item.name).replace(/\\/g, '/') });
+            }
+          }
+        }
+      } catch {}
+    }
+  }
+
+  // Ưu tiên package.json của frontend hoặc web
+  let targetPkg = packageJsonCandidates.find(p => p.relDir.includes('front') || p.relDir.includes('web') || p.relDir.includes('client'));
+  if (!targetPkg && packageJsonCandidates.length > 0) {
+    targetPkg = packageJsonCandidates.find(p => p.relDir !== '.') || packageJsonCandidates[0];
+  }
+
+  if (targetPkg) {
+    try {
+      const data = JSON.parse(fs.readFileSync(targetPkg.file, 'utf8'));
+      const scripts = data.scripts || {};
+      const startScript = scripts.start || '';
+      const devScript = scripts.dev || '';
+      const combined = `${startScript} ${devScript}`;
+
+      // 1. Kiểm tra portless (ví dụ: portless vietsage --app-port 3000)
+      const portlessMatch = combined.match(/portless\s+([a-zA-Z0-9_.-]+)/i);
+      const portMatch = combined.match(/--app-port\s+(\d+)/i) || combined.match(/-p\s+(\d+)/i) || combined.match(/PORT=(\d+)/i);
+      const port = portMatch ? parseInt(portMatch[1], 10) : 3000;
+
+      if (portlessMatch) {
+        const appName = portlessMatch[1];
+        serverConfig.baseUrl = `https://${appName}.localhost`;
+        serverConfig.isPortless = true;
+        serverConfig.appName = appName;
+        serverConfig.port = port;
+      } else {
+        serverConfig.baseUrl = `http://localhost:${port}`;
+        serverConfig.port = port;
+      }
+
+      if (targetPkg.relDir === '.') {
+        serverConfig.startCommand = scripts.start ? `${runner} run start` : `${runner} start`;
+        serverConfig.devCommand = scripts.dev ? `${runner} run dev` : `${runner} dev`;
+      } else {
+        serverConfig.startCommand = scripts.start ? `${runner} --dir ${targetPkg.relDir} start` : `${runner} --dir ${targetPkg.relDir} run start`;
+        serverConfig.devCommand = scripts.dev ? `${runner} --dir ${targetPkg.relDir} dev` : `${runner} --dir ${targetPkg.relDir} run dev`;
+      }
+    } catch {}
+  }
+
+  return serverConfig;
 }

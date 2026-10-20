@@ -2,6 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { interpolateTemplates } from '../core/template-engine.mjs';
 
+if (!process.env.NODE_TLS_REJECT_UNAUTHORIZED) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
+
 /**
  * Universal Chrome Interactive Flow Runner
  * Executes multi-step user flows (click, fill, wait, assert, screenshot)

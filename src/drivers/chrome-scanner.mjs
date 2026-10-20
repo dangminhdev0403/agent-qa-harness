@@ -1,5 +1,9 @@
 import { runChromeFlows } from './chrome-flow-runner.mjs';
 
+if (!process.env.NODE_TLS_REJECT_UNAUTHORIZED) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
+
 /**
  * Universal Chrome DevTools & Web Scanner Driver
  * Scans declared frontend routes and executes interactive user action flows.
