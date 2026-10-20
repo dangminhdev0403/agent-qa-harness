@@ -1,6 +1,3 @@
-import { io } from 'socket.io-client';
-import WebSocket from 'ws';
-
 /**
  * Universal Realtime Socket Probe Driver
  * Tests real-time connectivity, handshakes, room isolation, and event round-trips.
@@ -62,7 +59,17 @@ async function executeScenario(scenario, config) {
   }
 }
 
-function executeSocketIoScenario(scenario, baseUrl, timeoutMs) {
+async function executeSocketIoScenario(scenario, baseUrl, timeoutMs) {
+  let io;
+  try {
+    const module = await import('socket.io-client');
+    io = module.io || module.default?.io || module.default;
+  } catch (err) {
+    throw new Error(
+      `Package 'socket.io-client' is required for Socket.io scenarios. Please run: npm install socket.io-client`
+    );
+  }
+
   return new Promise((resolve, reject) => {
     const { receiver, trigger } = scenario;
     const socketUrl = `${baseUrl}${receiver.endpoint || ''}`;
@@ -134,13 +141,21 @@ function executeSocketIoScenario(scenario, baseUrl, timeoutMs) {
   });
 }
 
-function executeRawWsScenario(scenario, baseUrl, timeoutMs) {
+async function executeRawWsScenario(scenario, baseUrl, timeoutMs) {
+  let WS = globalThis.WebSocket;
+  if (!WS) {
+    try {
+      const module = await import('ws');
+      WS = module.WebSocket || module.default;
+    } catch {
+      throw new Error(`WebSocket is not globally available. Please install 'ws': npm install ws`);
+    }
+  }
+
   return new Promise((resolve, reject) => {
     const { receiver, trigger } = scenario;
     const wsUrl = (baseUrl + (receiver.endpoint || '')).replace(/^http/, 'ws');
-    const ws = new WebSocket(wsUrl, {
-      headers: receiver.headers || {}
-    });
+    const ws = new WS(wsUrl);
 
     let timeoutTimer = null;
     let isSettled = false;
