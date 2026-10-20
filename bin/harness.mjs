@@ -3,7 +3,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { executeHarness } from '../src/index.mjs';
-import { appendScenario } from '../src/core/scenario-builder.mjs';
+import { appendScenario, syncDiscoveredToConfig } from '../src/core/scenario-builder.mjs';
+import { autoDiscoverProject } from '../src/core/auto-discover.mjs';
 
 const args = process.argv.slice(2);
 const command = args[0] || 'run';
@@ -15,12 +16,13 @@ Agent QA Harness - Bộ khung kiểm thử tự động đa tầng cho AI Agents
 Cách dùng:
   agent-harness [lệnh] [tùy chọn]
 
-Các lệnh khả dụng:
+Các lệnh tự động hóa:
+  discover             TỰ ĐỘNG quét dự án và tạo/đồng bộ kịch bản (Zero-effort setup)
   run                  Chạy toàn bộ quy trình kiểm thử (mặc định)
   init                 Khởi tạo file cấu hình mẫu harness.config.json tại thư mục hiện tại
-  add:flow <tên>       Thêm nhanh một kịch bản UI Flow mới khi vừa phát triển tính năng
-  add:socket <tên>     Thêm nhanh một kịch bản kiểm tra Realtime Socket mới
-  add:concurrency <tên>Thêm nhanh một kịch bản kiểm tra Duyệt tranh chấp (Concurrency)
+  add:flow <tên>       Thêm/Nâng cấp kịch bản UI Flow mới (Tự động lọc trùng)
+  add:socket <tên>     Thêm/Nâng cấp kịch bản kiểm tra Realtime Socket
+  add:concurrency <tên>Thêm/Nâng cấp kịch bản kiểm tra Duyệt tranh chấp (Concurrency)
   probe:socket         Chỉ chạy Tier 1 (Kiểm tra kết nối Realtime Socket)
   probe:concurrency    Chỉ chạy Tier 2 (Kiểm tra tranh chấp Concurrency & Idempotency)
   probe:browser        Chỉ chạy Tier 3 (Kiểm tra Route trình duyệt & Lỗi Console)
@@ -55,6 +57,11 @@ async function handleInit() {
   }
 
   console.log(` Khởi tạo thành công harness.config.json tại: ${target}`);
+}
+
+async function handleDiscover() {
+  const discovered = await autoDiscoverProject(process.cwd());
+  syncDiscoveredToConfig(process.cwd(), discovered);
 }
 
 async function handleAdd(type, name) {
@@ -98,7 +105,7 @@ async function handleAdd(type, name) {
       method: "POST",
       concurrentBurst: 5,
       assert: {
-        expected200: 1,
+        "expected200": 1,
         expectedConflictOrBad: 4
       }
     };
@@ -115,6 +122,11 @@ async function main() {
 
   if (command === 'init') {
     await handleInit();
+    process.exit(0);
+  }
+
+  if (command === 'discover') {
+    await handleDiscover();
     process.exit(0);
   }
 

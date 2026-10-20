@@ -22,18 +22,28 @@ Khi các lập trình viên hoặc AI Agents (Antigravity, Codex, Orca) phát tr
 Để dự án luôn luôn trơn tru và **không bao giờ bị quên test khi dự án phình to**:
 > **Bất kỳ khi nào bạn hoặc AI Agent phát triển xong một tính năng mới (dù là UI, Socket hay API duyệt đơn), BẮT BUỘC phải ghi nhận ngay kịch bản kiểm thử vào `harness.config.json`!**
 
-Harness cung cấp sẵn lệnh thêm nhanh một chạm:
+### 1. Tự Động Quét & Khởi Tạo Dự Án Mới (Zero-Effort Auto-Discover)
+Khi bạn bắt đầu ở bất kỳ repository nào, **không cần phải gõ tay cấu hình từng trang hay từng socket**, chỉ cần chạy:
 ```bash
-# 1. Thêm kịch bản kiểm tra giao diện / luồng thao tác người dùng (UI Flow)
+agent-harness discover
+```
+Lệnh này sẽ **tự động quét toàn bộ mã nguồn** (Next.js routes, NestJS `@WebSocketGateway`, `@SubscribeMessage`, và các endpoint Mutation nhạy cảm như `/approve`, `/checkout`, `/pay`) để tự động sinh ra kịch bản ban đầu đầy đủ!
+
+### 2. Thêm Nhanh & Tự Động Nâng Cấp (Smart Upgrade & Deduplication)
+Khi phát triển hoặc sửa đổi tính năng:
+```bash
+# Thêm/Nâng cấp kịch bản kiểm tra giao diện / luồng thao tác người dùng (UI Flow)
 agent-harness add:flow "quan-ly-dat-phong"
 
-# 2. Thêm kịch bản kiểm tra realtime socket cho tính năng mới
+# Thêm/Nâng cấp kịch bản kiểm tra realtime socket cho tính năng mới
 agent-harness add:socket "thong-bao-nhan-phong"
 
-# 3. Thêm kịch bản kiểm tra chống duyệt trùng / tranh chấp (Race condition)
+# Thêm/Nâng cấp kịch bản kiểm tra chống duyệt trùng / tranh chấp (Race condition)
 agent-harness add:concurrency "duyet-hoan-tien"
 ```
-Các kịch bản này sẽ trở thành **Tài sản kiểm thử vĩnh viễn (Living Harness Specs)**. Các lần code sau, Agent chỉ cần chạy `agent-harness run` là kiểm tra lại toàn bộ từ tính năng cũ đến mới, đảm bảo 0% lỗi hồi quy (zero regression).
+
+> **🛡️ Cơ chế Lọc Trùng Thông Minh:**  
+> Nếu tính năng đã tồn tại, Harness sẽ **tự động nâng cấp (upgrade)** các bước, selector và payload mới nhất thay vì tạo kịch bản trùng lặp. Tuyệt đối không sinh rác cấu hình.
 
 ---
 
