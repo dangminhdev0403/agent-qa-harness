@@ -109,59 +109,86 @@ Window Session Tag: ${windowSessionId}`
     const guestSession = this.generateWindowSessionId('guest');
     const receptionistSession = this.generateWindowSessionId('receptionist');
     const ownerSession = this.generateWindowSessionId('owner');
+    const fixtures = config.fixtures || {};
+    const qrCode = fixtures.qrCode || 'DEMO_QR_ROOM_101';
+    const hotelId = fixtures.hotelId || 'HCA_HOMESTAY';
+
+    const receptionistAuth = config.personas?.frontdesk?.auth || config.personas?.frontdesk;
+    const ownerAuth = config.personas?.owner?.auth || config.personas?.owner;
 
     const guestWorker = {
       TypeName: "self",
-      Role: "QA Guest Persona",
+      Role: "QA Guest In-Room Journey",
       Model: "inherit",
       Workspace: "inherit",
       WindowSession: guestSession,
-      Prompt: `Act as a Walk-in Guest (Khách vãng lai / Khách thuê phòng) testing "${projectName}".
+      Prompt: `Act as a Guest staying in room (Khách lưu trú phòng QR) testing end-to-end journey in "${projectName}".
 OPERATE ON DEDICATED CHROME WINDOW:
-1. Call \`new_page(url: "${baseUrl}/guest")\` to spawn your dedicated Guest window.
-2. Select a service / room request (e.g. Request extra towel, room cleaning, or food order).
-3. Fill required fields with dynamic payload and click Submit.
-4. Verify instant UI feedback (status moves to "Pending / Chờ xử lý"), 0 console errors, 0 network 4xx/5xx.
-5. Capture screenshot to harness-out/screenshots/${guestSession}/guest-submitted.png.
-6. Call \`close_page\` when done. Report result and emitted event payload.`
+1. Call \`new_page(url: "${baseUrl}/g/${qrCode}", isolatedContext: "${guestSession}")\` to spawn your dedicated Guest window.
+2. INTERACTIVE UI ACTIONS:
+   - Navigate to /g/services or /g/requests.
+   - Click service card / button (e.g. "Gọi khăn tắm" or "Dọn phòng").
+   - Fill note input with: "Khách phòng ${qrCode} yêu cầu 2 khăn tắm (Test lúc ${new Date().toLocaleTimeString()})".
+   - Click Submit button.
+3. VERIFICATION:
+   - Assert confirmation toast / order code returned.
+   - Assert 0 console errors, 0 network 4xx/5xx failures.
+4. Capture screenshot to harness-out/screenshots/${guestSession}/guest-request-sent.png.
+5. Call \`close_page\` when done. Report request ID to coordinator.`
     };
 
     const receptionistWorker = {
       TypeName: "self",
-      Role: "QA Receptionist Persona",
+      Role: "QA Frontdesk Ops Journey",
       Model: "inherit",
       Workspace: "inherit",
       WindowSession: receptionistSession,
-      Prompt: `Act as a Hotel Receptionist (Lễ tân khách sạn / Hotel Ops) testing "${projectName}".
+      Prompt: `Act as a Frontdesk Receptionist (Lễ tân khách sạn) testing end-to-end journey in "${projectName}".
+AUTHENTICATION:
+- Login at "${baseUrl}/dangnhap" if prompted.
+- Credentials: Username="${receptionistAuth?.username || receptionistAuth?.email || 'frontdesk@vietsage.vn'}", Password="${receptionistAuth?.password || 'Admin@123'}".
+
 OPERATE ON DEDICATED CHROME WINDOW:
-1. Call \`new_page(url: "${baseUrl}/owner/operations")\` to spawn your dedicated Receptionist window.
-2. Listen for the realtime incoming request from Guest (WebSocket room assertion).
-3. Verify incoming notification toast / audio trigger / badge update without page reload.
-4. Click "Approve / Tiếp nhận" on the guest's request.
-5. Verify status changes to "Approved / Đã tiếp nhận", 0 console errors, 0 network 4xx/5xx.
-6. Capture screenshot to harness-out/screenshots/${receptionistSession}/receptionist-approved.png.
-7. Call \`close_page\` when done. Report confirmation status.`
+1. Call \`new_page(url: "${baseUrl}/staff/front-desk", isolatedContext: "${receptionistSession}")\` (or /hotels/${hotelId}/requests).
+2. REALTIME RECEIVE & APPROVAL INTERACTION:
+   - Wait for the incoming room request created by Guest.
+   - Locate the request card on the board.
+   - Click "Tiếp nhận" or "Duyệt" button.
+   - Verify status pill transitions cleanly (e.g. Chờ xử lý -> Đang xử lý) in-place without page reload.
+3. VERIFICATION:
+   - Assert 0 console errors, 0 network 4xx/5xx failures.
+   - Verify in-place tab isolation (actions execute in drawer/modal, zero disruptive cross-tab redirects).
+4. Capture screenshot to harness-out/screenshots/${receptionistSession}/receptionist-approved.png.
+5. Call \`close_page\` when done. Report approval status.`
     };
 
     const ownerWorker = {
       TypeName: "self",
-      Role: "QA Hotel Owner Persona",
+      Role: "QA Hotel Owner Audit Journey",
       Model: "inherit",
       Workspace: "inherit",
       WindowSession: ownerSession,
-      Prompt: `Act as a Hotel Owner (Chủ khách sạn / Admin) testing "${projectName}".
+      Prompt: `Act as a Hotel Owner (Chủ khách sạn) testing management flows in "${projectName}".
+AUTHENTICATION:
+- Login at "${baseUrl}/dangnhap" if prompted.
+- Credentials: Username="${ownerAuth?.username || ownerAuth?.email || 'thucvn@gmail.com'}", Password="${ownerAuth?.password || 'Admin@123'}".
+
 OPERATE ON DEDICATED CHROME WINDOW:
-1. Call \`new_page(url: "${baseUrl}/owner/dashboard")\` to spawn your dedicated Owner window.
-2. Inspect room inventory, tape chart allocations, and revenue metrics.
-3. Verify in-place tab isolation (drawer/modal opens cleanly, zero cross-tab redirects).
-4. Verify 0 console errors, 0 network 4xx/5xx.
-5. Capture screenshot to harness-out/screenshots/${ownerSession}/owner-audit.png.
-6. Call \`close_page\` when done. Report high-level management health.`
+1. Call \`new_page(url: "${baseUrl}/owner/dashboard", isolatedContext: "${ownerSession}")\`.
+2. DEEP INTERACTION:
+   - Navigate to /hotels/${hotelId}/rooms or Tape Chart.
+   - Click room status filter tabs (Tất cả, Đang có khách, Phòng trống) -> verify in-place view update.
+   - Click a room card -> verify room details Drawer/Sheet opens in-place (verifying Tab Isolation).
+   - Close drawer.
+3. VERIFICATION:
+   - Assert 0 console errors, 0 network 4xx/5xx.
+4. Capture screenshot to harness-out/screenshots/${ownerSession}/owner-audit.png.
+5. Call \`close_page\` when done. Report management overview.`
     };
 
     return {
       projectName,
-      strategy: "multi_persona_swarm",
+      strategy: "multi_persona_journey",
       personas: [guestWorker, receptionistWorker, ownerWorker]
     };
   }
@@ -211,19 +238,41 @@ ${sampleRoutes.map(r => `• ${baseUrl}${r}`).join('\n')}
 
 ${authInstruction}
 
-OPERATIONAL PROTOCOL (DEDICATED CHROME WINDOW):
+OPERATIONAL PROTOCOL (DEEP INTERACTIVE UI TESTING):
 1. WINDOW CREATION: Call chrome-devtools-mcp tool \`new_page(url: "${baseUrl}${sampleRoutes[0] || ''}", isolatedContext: "${sessionId}")\`.
-2. VERIFICATION GATES ON EVERY ROUTE:
-   - For each route in TESTING SCOPE:
-     - Navigate to route: \`navigate_page(url: "${baseUrl}<route>")\`.
-     - Check console errors: \`list_console_messages\` -> assert ZERO error level messages.
-     - Check network errors: \`list_network_requests\` -> assert ZERO 4xx/5xx responses.
-     - Verify in-place tab isolation (actions execute in drawer/modal, zero disruptive cross-tab redirects).
-3. EVIDENCE PERSISTENCE:
+2. AUTHENTICATION & LOGIN GATE:
+   - If redirected to login page (${loginPath}):
+     ${username && password ? `- Enter username "${username}" and password "${password}".\n     - Click submit and wait for dashboard navigation.` : `- Authenticate with valid ${mod.role} credentials if available.`}
+
+3. MANDATORY DEEP UI INTERACTION ON EVERY ROUTE (DO NOT JUST NAVIGATE):
+   For each route in TESTING SCOPE:
+   a. Navigate: \`navigate_page(url: "${baseUrl}<route>")\`.
+   b. Nav Links & Sub-Tabs Exploration:
+      - Scan for navigation links, category pills, and tabs (\`[role="tab"]\`, \`nav a\`, \`.filter-btn\`).
+      - Click active tabs/filters to verify state updates in-place without page reload.
+   c. Interactive Buttons, Cards & In-Place Drawers:
+      - Locate primary action buttons ("Tạo mới", "Thêm", "Lọc", "Xem chi tiết", "Duyệt").
+      - Click to verify modal or drawer opens in-place (verifying Tab Isolation Standard: zero disruptive cross-tab redirects).
+      - Close modal/drawer cleanly via close button or Escape key.
+   d. Form Submission & Validation Verification:
+      - On form screens, test entering input values. Test submitting empty/invalid inputs to verify user-friendly validation messages appear (never crash or throw uncaught errors).
+   e. Console & Network Assertions:
+      - Check console errors: \`list_console_messages\` -> assert ZERO error level messages.
+      - Check network errors: \`list_network_requests\` -> assert ZERO 4xx/5xx responses.
+
+4. FIX VS NO-FIX BOUNDARY STANDARD:
+   - 🔴 FORBIDDEN TO TOUCH (Report Only):
+     * RBAC / Authorization gates: DO NOT remove \`@UseGuards()\`, bypass permission checks, or elevate roles just to make tests pass.
+     * Database Schema & Tables: DO NOT alter database schemas, drop tables, or run destructive migrations during UI testing. Report any DB failures (500, Prisma errors) as "Lỗi Database (Chờ xử lý)".
+   - 🟢 AUTHORIZED TO FIX (In-Place Remediation):
+     * Error Notification Copy: Upgrade raw technical error strings (403 Forbidden, 500 Internal, TypeError) into polite, human-readable toasts/alerts (e.g. "Bạn không có quyền thực hiện thao tác này").
+     * UI Layout & Interaction Bugs: Fix unresponsive click handlers, missing drawer state resets, z-index clipping, broken form validations, font floor violations (< 12px), or missing \`text-balance\`.
+     * Contract Binding: Align form payload keys with backend DTOs, fix incorrect URL query parameters.
+
+5. EVIDENCE & CLEAN TEARDOWN:
    - Capture checkpoint screenshot: \`take_screenshot(filePath: "harness-out/screenshots/${sessionId}/checkpoint.png")\`.
-4. CLEAN TEARDOWN:
    - ALWAYS call \`close_page\` when finished (PASS or FAIL).
-   - Report concise execution summary (total routes tested, console status, network status, blockers).`;
+   - Report concise execution summary (routes tested, UI actions performed, console/network status, blockers).`;
 
       const roleTitle = `QA ${mod.name} Inspector`;
 

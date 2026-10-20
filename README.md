@@ -15,12 +15,14 @@
 3. [4 Tấm Khiên Bảo Vệ Đột Phá (Bulletproof Protections)](#-4-tấm-khiên-bảo-vệ-đột-phá-bulletproof)
 4. [Tăng Tốc Với Sub-Agents & Cô Lập Cửa Sổ Chrome Riêng Biệt](#-tăng-tốc-với-sub-agents--cô-lập-cửa-sổ-chrome-riêng-biệt)
 5. [Nguyên Tắc Bất Biến: Chống Kiểm Thử Nửa Vời & Tự Động Hỏi Khi Thiếu Điều Kiện](#-nguyên-tắc-bất-biến-chống-kiểm-thử-nửa-vời--tự-động-hỏi-khi-thiếu-điều-kiện)
-6. [Nguyên Tắc Bất Biến: Living Harness Contract](#-nguyên-tắc-bất-biến-living-harness-contract)
-7. [Kiến Trúc Kiểm Thử 4 Tầng](#-kiến-trúc-kiểm-thử-đa-tầng-4-tier-test-architecture)
-8. [Bắt Đầu Nhanh (Quickstart 60 Giây)](#-bắt-đầu-nhanh-áp-dụng-cho-mọi-repo-trong-60-giây)
-9. [Tích Hợp Archon Workflow DAG](#-tích-hợp-archon-workflow-dag)
-10. [Bảng Tra Cứu Lệnh CLI Toàn Cục](#-bảng-tra-cứu-lệnh-cli-toàn-cục)
-11. [Tài Liệu Chi Tiết](#-tài-liệu-chi-tiết)
+6. [Chuẩn Mực Tương Tác Giao Diện Sâu & Luồng Khách - Lễ Tân](#-chuẩn-mực-tương-tác-giao-diện-sâu--luồng-nghiệp-vụ-khách---lễ-tân)
+7. [Quy Chuẩn Phân Định Phạm Vi Sửa Lỗi: RBAC vs Database vs UI/UX](#-quy-chuẩn-phân-định-phạm-vi-sửa-lỗi-fix-vs-no-fix-boundary)
+8. [Nguyên Tắc Bất Biến: Living Harness Contract](#-nguyên-tắc-bất-biến-living-harness-contract)
+9. [Kiến Trúc Kiểm Thử 4 Tầng](#-kiến-trúc-kiểm-thử-đa-tầng-4-tier-test-architecture)
+10. [Bắt Đầu Nhanh (Quickstart 60 Giây)](#-bắt-đầu-nhanh-áp-dụng-cho-mọi-repo-trong-60-giây)
+11. [Tích Hợp Archon Workflow DAG](#-tích-hợp-archon-workflow-dag)
+12. [Bảng Tra Cứu Lệnh CLI Toàn Cục](#-bảng-tra-cứu-lệnh-cli-toàn-cục)
+13. [Tài Liệu Chi Tiết](#-tài-liệu-chi-tiết)
 
 ---
 
@@ -231,6 +233,62 @@ Lệnh này quét toàn bộ cấu hình dự án để phát hiện 3 rào cả
   - Yêu cầu cung cấp tài khoản test hoặc mật khẩu của các vai trò cần kiểm thử.
   - Hoặc xin phép chạy lệnh seed dữ liệu mẫu tự động (`pnpm run seed:...`).
 - Tuyệt đối KHÔNG tự ý chạy một phần qua loa rồi đánh lừa người dùng là đã kiểm thử xong toàn bộ.
+
+---
+
+## 🖱️ Chuẩn Mực Tương Tác Giao Diện Sâu & Luồng Khách - Lễ Tân
+
+> **NGHIÊM CẤM TEST QUA LOA CHỈ DỪNG LẠI Ở LOGIN HOẶC LOAD TRANG TĨNH.**  
+> Một bài test UI hoàn chỉnh bắt buộc phải kích hoạt các thao tác tương tác người dùng thực tế trên DOM:
+
+### 1. 4 Thao Tác Bắt Buộc Trên Mọi Màn Hình
+1. **Duyệt Sub-Tabs & Bộ Lọc (`[role="tab"]`, `nav a`)**: Bấm chuyển đổi các tab danh mục, bộ lọc trạng thái (ví dụ: Tất cả, Đang xử lý, Hoàn thành), xác nhận giao diện đổi nội dung tại chỗ mà **không reload toàn trang**.
+2. **Kích Hoạt Nút Bấm & Mở Drawer/Modal Tại Chỗ**:
+   - Bấm các nút thao tác chính (*"Tạo mới"*, *"Thêm phòng"*, *"Chi tiết"*, *"Xem đơn hàng"*).
+   - Xác nhận Modal hoặc Drawer mở mượt mà **tại chỗ (Tab Isolation Standard)**, tuyệt đối không bị redirect văng sang trang khác.
+   - Đóng Drawer/Modal an toàn bằng nút X hoặc phím ESC.
+3. **Thao Tác Thẻ Card & Bảng Dữ Liệu**: Hover, click vào các hàng trong bảng hoặc thẻ card xem phản hồi.
+4. **Kiểm Thử Form & Validation Lỗi Thân Thiện**: Thử nhập dữ liệu và thử bấm gửi form trống để kiểm tra thông báo validation lỗi (không để crash màn hình trắng hay văng unhandled exception).
+
+### 2. Kịch Bản Realtime Xuyên Suốt (End-to-End Journey: Khách -> Lễ Tân)
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Guest as Subagent Khách (Cửa sổ A)
+    participant Server as NestJS API & WebSocket
+    actor Ops as Subagent Lễ Tân (Cửa sổ B)
+
+    Guest->>Guest: Mở /g/[qrCode] -> Xem Menu dịch vụ
+    Guest->>Guest: Bấm chọn "Gọi khăn tắm" -> Điền ghi chú
+    Guest->>Server: Bấm Gửi yêu cầu -> Nhận mã yêu cầu
+    Server-->>Ops: Bắn realtime WebSocket thông báo
+    Note over Ops: Cửa sổ Lễ tân nổ chuông & nảy Card mới
+    Ops->>Ops: Bấm nút "Tiếp nhận" trên Card
+    Ops->>Server: Cập nhật trạng thái yêu cầu
+    Server-->>Guest: Cập nhật status trên điện thoại khách: "Đang xử lý"
+```
+
+---
+
+## ⚖️ Quy Chuẩn Phân Định Phạm Vi Sửa Lỗi (Fix vs No-Fix Boundary)
+
+Khi phát hiện lỗi trong quá trình kiểm thử UI Flow, Agent bắt buộc tuân theo **ranh giới sửa lỗi nghiêm ngặt**:
+
+### 🔴 NGHIÊM CẤM TỰ Ý SỬA (Report Only - Chỉ Báo Cáo):
+1. **Phân Quyền RBAC & Authorization**:
+   - Tuyệt đối **KHÔNG gỡ bỏ `@UseGuards()`**, `@CheckPermissions()`, AuthGuard, hoặc hạ quyền hạn của role trong backend/frontend chỉ để "lách" qua bài test.
+   - Việc chặn truy cập khi sai quyền là tính năng bảo mật chủ đích.
+2. **Cơ Sở Dữ Liệu & Schema (DB State)**:
+   - Đã test UI thì **chỉ dừng lại ở UI Flow**, tuyệt đối **KHÔNG động chạm vào DB** (không chạy migration, không reset bảng, không sửa schema, không can thiệp trực tiếp vào database).
+   - Mọi lỗi liên quan đến Database (500 Internal DB error, Prisma query failure, Foreign key constraint, missing record) **BẮT BUỘC PHẢI GHI NHẬN VÀ BÁO CÁO (Report Only)** cho team backend xử lý.
+
+### 🟢 ĐƯỢC PHÉP VÀ KHUYẾN KHÍCH SỬA (Authorized In-Place Fixes):
+1. **Thông Báo Lỗi Thân Thiện (Error Copywriting & UX)**:
+   - Thay vì để giao diện hiện mã lỗi kỹ thuật thô (`403 Forbidden`, `500 Internal`, `TypeError`) hoặc crash màn hình trắng $\rightarrow$ Sửa component hiển thị thông báo rõ ràng, lịch sự, dễ hiểu (ví dụ: *"Bạn không có quyền thực hiện thao tác này"* hoặc *"Không thể kết nối máy chủ, vui lòng thử lại"*).
+2. **Lỗi Giao Diện Frontend (UI/UX Bugs)**:
+   - Nút bấm click không ăn (`onClick` bị nuốt), thiếu reset state sau khi đóng drawer/modal, z-index bị che khuất, form validation không hiển thị, vi phạm sàn font < 12px, tiêu đề thiếu `text-balance`.
+3. **Ráp Nối Hợp Đồng API (Frontend-Backend Binding)**:
+   - Sửa sai lệch tên trường giữa form frontend và DTO backend, sửa sai URL query parameters, bổ sung trạng thái Loading/Empty state khi chờ dữ liệu.
 
 ---
 

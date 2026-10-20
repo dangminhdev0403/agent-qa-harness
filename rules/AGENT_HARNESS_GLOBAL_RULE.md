@@ -59,3 +59,20 @@ STRICT PROTOCOL: When user triggers subagent execution ("thực thi sub_agents",
 1. The AI Agent MUST NOT reply with a passive text summary or simply output the JSON plan.
 2. The AI Agent MUST IMMEDIATELY execute tool calls: `invoke_subagent(TypeName: "self", Role: worker.Role, Model: "inherit", Prompt: worker.Prompt)`.
 3. Auto-load credentials: If `account.json` or `config.personas` exists, the subagent prompt already contains valid login credentials. Subagents execute autonomous flow testing on dedicated Chrome windows (`isolatedContext`) and report back upon completion.
+
+### 7. DEEP UI INTERACTION MANDATE (NO SHALLOW NAVIGATION)
+STRICT INVARIANT: Merely navigating to routes or stopping at login is considered an incomplete test. Subagents MUST perform concrete DOM interactions:
+1. Click sub-navigation tabs (`[role="tab"]`), category filters, and pills to verify in-place state transitions.
+2. Click primary action buttons to open Modals/Drawers in-place (verifying Tab Isolation Standard: zero disruptive redirects) and close them cleanly.
+3. Verify form validations: test submitting empty/invalid inputs and verify human-readable feedback (never crash or throw uncaught errors).
+4. Cross-Role Realtime E2E Journey: Execute Khách (tạo yêu cầu trên /g/[qrCode]) -> Lễ tân (nhận WebSocket và bấm duyệt trên /staff/front-desk).
+
+### 8. FIX VS NO-FIX BOUNDARY STANDARD (RBAC & DATABASE INVARIANTS)
+Remediation must strictly respect architectural boundaries:
+- 🔴 **STRICTLY FORBIDDEN TO TOUCH (Report Only)**:
+  1. RBAC & Authorization: NEVER remove `@UseGuards()`, bypass role/permission checks, or alter auth guards just to pass a test.
+  2. Database Schema & Data: NEVER run destructive DB migrations, reset tables, or corrupt database state during UI tests. Report all DB errors (500, Prisma query failure) as "Lỗi Database (Chờ xử lý)".
+- 🟢 **AUTHORIZED & ENCOURAGED TO FIX**:
+  1. Error Notification Copy: Upgrade raw error codes (403 Forbidden, 500 Internal, TypeError) into clean, polite, human-readable toasts/alerts (e.g. "Bạn không có quyền thực hiện thao tác này").
+  2. UI/UX Bugs: Broken button clicks, missing drawer state reset, z-index clipping, broken validations, typography floor violations (< 12px), missing `text-balance`.
+  3. API/DTO Binding: Align frontend form payload keys with backend schema, fix query param names.

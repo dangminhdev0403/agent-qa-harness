@@ -79,3 +79,29 @@ STRICT INVARIANT: When the user requests subagent execution (e.g. "thực thi c�
 - **Tier 1 (Realtime Socket)**: Event listener timed out after 3000ms. Fix: Align room name in gateway and event publisher; check `authProvider` login configuration.
 - **Tier 2 (Concurrency Gate)**: Multiple HTTP 200 responses received during concurrent burst. Fix: Enforce Optimistic Locking (version column check) or Pessimistic Transaction Lock (`SELECT FOR UPDATE`) in database service.
 - **Tier 3 (Browser Runtime/Hydration)**: Console error or background network 500. Fix: Move client-only browser APIs (`localStorage`, `window`) to `useEffect` or wrap in Zustand `safeStorage`; verify API route prefix `/api/v1`.
+
+---
+
+## 5. DEEP UI INTERACTION & CROSS-ROLE REALTIME JOURNEY PROTOCOL
+Static URL navigation or stopping at login is strictly insufficient. For all UI flow tests, agents MUST execute active DOM interactions:
+1. **Nav Links & Sub-Tabs Exploration**: Click top tabs (`[role="tab"]`), category filters, and sub-nav links. Assert state changes in-place without page refresh.
+2. **Buttons & In-Place Drawers**: Click action buttons ("Tạo mới", "Thêm", "Lọc", "Chi tiết", "Xem"). Verify Modal or Drawer/Sheet opens in-place (verifying Tab Isolation Standard: zero disruptive cross-tab redirects), then close cleanly.
+3. **Form Submissions & Validation**: Test entering inputs and submitting empty/invalid forms -> verify human-readable error messages appear (never crash).
+4. **End-to-End Realtime Journey (Khách -> Lễ tân -> Chủ khách sạn)**:
+   - Guest Subagent (`/g/[qrCode]`): Selects service, submits room request, receives request ID.
+   - Frontdesk Subagent (`/staff/front-desk`): Receives realtime WebSocket update, clicks "Tiếp nhận" / "Hoàn thành", verifies status badge transitions without reload.
+   - Owner Subagent (`/owner/dashboard`): Verifies room status and metrics update.
+
+---
+
+## 6. FIX VS NO-FIX BOUNDARY PROTOCOL (RBAC & DATABASE INVARIANTS)
+When failures occur during UI flow testing, agents MUST observe strict remediation boundaries:
+
+### 🔴 Strictly Forbidden to Touch / Bypass (Report Only):
+1. **RBAC & Authorization Gates**: NEVER remove `@UseGuards()`, bypass permission checks, or elevate roles just to force a test to pass. RBAC protection is deliberate security policy.
+2. **Database Schema & Raw Data**: NEVER run schema migrations, reset tables, or tamper with database records during UI testing. Every database error (500 Internal, Prisma query failure, FK constraint) MUST be logged into `harness-out/INCIDENT_PACK.json` and reported as **"Lỗi Database (Chờ xử lý)"**.
+
+### 🟢 Authorized & Encouraged to Remediate (In-Place Fixes):
+1. **Error Notification Copywriting & UX**: Upgrade raw technical error codes (`403 Forbidden`, `500 Internal`, `TypeError`) into clear, human-readable toasts/alerts (e.g. *"Bạn không có quyền thực hiện thao tác này"* instead of unhandled exceptions or white-screen crashes).
+2. **Frontend UI/UX Bugs**: Unresponsive buttons (`onClick` swallowed), missing drawer state reset, z-index clipping, broken form validations, font floor violations (< 12px), missing `text-balance`.
+3. **Frontend-Backend Contract Binding**: Align form payload keys with backend DTOs, fix incorrect URL query parameters, add missing loading/error states.
