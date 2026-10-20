@@ -37,10 +37,17 @@ Subagents performing Mode 2 or interactive browser testing MUST adhere to dedica
 ---
 
 ## 3. SUB-AGENT SWARM ACCELERATION ARCHITECTURE
-Coordinator agent accelerates verification by dispatching 2 concurrent subagents:
+Coordinator agent accelerates verification by dispatching concurrent subagents:
 - **Worker 1 (`QA Code Gatekeeper`)**: `invoke_subagent` (`TypeName: "self"`, `Role: "QA Code Gatekeeper"`, `Model: "flash"`, `Workspace: "inherit"`). Runs `agent-harness test:code --auto-start`. Executes Tiers 0, 1, 2 in background.
 - **Worker 2 (`QA Flow Inspector`)**: `invoke_subagent` (`TypeName: "self"`, `Role: "QA Flow Inspector"`, `Model: "inherit"`, `Workspace: "inherit"`). Drives dedicated Chrome window via `new_page` -> flows -> `close_page`.
 - **Worker 3 (`QA Branch Fixer`)**: If failure occurs, spawn with `Workspace: "branch"`. Operates in isolated branch workspace (`git checkout -b harness-fix/...`), inspects `harness-out/INCIDENT_PACK.json`, applies minimal atomic fix, verifies via `agent-harness probe:<tier>`, and merges back only when green. Prevents ping-pong multi-agent loops.
+
+### 3.1 Multi-Persona Concurrent Swarm (Guest vs Receptionist vs Hotel Owner)
+To test cross-system realtime interactions, spawn 3 concurrent persona subagents via `agent-harness subagents:personas`:
+1. `QA Guest Persona`: Dedicated window (`new_page` -> `/guest`). Places room/amenity order. Asserts instant submission status.
+2. `QA Receptionist Persona`: Dedicated window (`new_page` -> `/owner/operations`). Asserts realtime incoming toast/sound within 3000ms. Clicks "Approve".
+3. `QA Hotel Owner Persona`: Dedicated window (`new_page` -> `/owner/dashboard`). Asserts tape chart status update, revenue increment, and 0 console errors.
+All 3 personas operate on independent Chrome windows concurrently without session leakage.
 
 ---
 

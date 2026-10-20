@@ -96,9 +96,38 @@ Khi Sub-Agents thực thi kiểm thử giao diện bằng Chrome DevTools MCP, *
 3. **Chống nhiễm chéo dữ liệu**: Phiên làm việc, cookies, LocalStorage giữa các luồng (ví dụ: luồng Khách vs luồng Lễ tân) hoàn toàn độc lập.
 4. **Dọn dẹp triệt để (`close_page`)**: Khi test xong (kể cả PASS hay FAIL), bắt buộc gọi `close_page` để giải phóng bộ nhớ, không để lại tab mồ côi.
 
+### 3. Thử Nghiệm Tương Tác Đa Vai Trò (Multi-Persona Swarm: Khách - Lễ Tân - Chủ Khách Sạn)
+Trong các hệ thống đặt phòng và quản lý khách sạn phức tạp (PMS), một luồng nghiệp vụ hoàn chỉnh luôn cần sự phối hợp giữa nhiều đối tượng người dùng. Harness cho phép khởi tạo **3 Sub-Agents đóng 3 vai trò khác nhau trên 3 cửa sổ Chrome độc lập**:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Guest as Subagent 1: Khách vãng lai<br/>(Cửa sổ Chrome A)
+    participant Server as NestJS Gateway & API
+    actor Ops as Subagent 2: Lễ tân khách sạn<br/>(Cửa sổ Chrome B)
+    actor Owner as Subagent 3: Chủ khách sạn<br/>(Cửa sổ Chrome C)
+
+    Guest->>Server: Mở /guest -> Đặt khăn tắm / gọi món (Tạo Request)
+    Server-->>Ops: Bắn realtime WebSocket REQUEST_CREATED (< 1s)
+    Note over Ops: Cửa sổ Lễ tân nổ chuông & hiện toast tự động
+    Ops->>Server: Bấm "Tiếp nhận / Duyệt yêu cầu"
+    Server-->>Guest: Cập nhật realtime status: "Đã tiếp nhận"
+    Server-->>Owner: Cập nhật Tape Chart & doanh thu trên /owner/dashboard
+    Note over Owner: Kiểm tra đối soát số liệu & nhật ký kiểm toán
+```
+
+| Sub-Agent Vai Trò | Cửa sổ Chrome | Hành động nghiệp vụ chính | Tiêu chí nghiệm thu (Pass Gate) |
+| :--- | :--- | :--- | :--- |
+| **Khách vãng lai / Thuê phòng** (`QA Guest Persona`) | Cửa sổ A (`/guest`) | Quét QR/mở trang khách, chọn dịch vụ phòng, bấm gửi đơn. | Form phản hồi tức thì, 0 lỗi Console, nhận mã yêu cầu. |
+| **Lễ tân / Vận hành** (`QA Receptionist Persona`) | Cửa sổ B (`/owner/operations`) | Lắng nghe WebSocket phòng khách sạn, duyệt tiếp nhận đơn. | Toast realtime xuất hiện trong 3000ms, nút duyệt chuyển trạng thái thành công. |
+| **Chủ khách sạn / Quản trị** (`QA Owner Persona`) | Cửa sổ C (`/owner/dashboard`) | Theo dõi bảng điều khiển doanh thu, sơ đồ Tape Chart. | Không bị chuyển trang đột ngột (Tab Isolation), số liệu khớp 100%. |
+
 ```bash
 # Lấy kế hoạch điều phối Sub-Agents song song kèm Session ID cửa sổ Chrome
 agent-harness subagents:plan
+
+# Lấy kế hoạch Swarm Đa Persona (Khách - Lễ tân - Chủ khách sạn trên 3 cửa sổ độc lập)
+agent-harness subagents:personas
 
 # Lấy cấu hình Sub-Agent tự sửa lỗi trên nhánh cô lập
 agent-harness subagents:fix
@@ -293,6 +322,7 @@ archon run .archon/workflows/universal-qa-harness.yaml
 | `agent-harness probe:concurrency` | Chạy riêng rẽ Tier 2 (Concurrency Gate) |
 | `agent-harness probe:browser` | Chạy riêng rẽ Tier 3 (Chrome & Route Scanner) |
 | `agent-harness subagents:plan` | Xuất JSON kế hoạch điều phối 2 Sub-Agents song song (Code Tester + Flow Tester với cửa sổ Chrome riêng biệt) |
+| `agent-harness subagents:personas` | Xuất JSON kế hoạch Swarm Đa Persona (Khách vãng lai, Lễ tân, Chủ khách sạn trên 3 cửa sổ Chrome riêng biệt) |
 | `agent-harness subagents:fix` | Xuất JSON cấu hình Sub-Agent tự sửa lỗi trên nhánh cô lập (Workspace: 'branch') |
 | `agent-harness --window-session <id>` | Gán Session ID cửa sổ Chrome độc lập cho Sub-Agent |
 | `agent-harness --tier <0\|1\|2\|3>` | Chạy một Tier cụ thể được chỉ định |

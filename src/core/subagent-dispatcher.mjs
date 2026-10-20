@@ -96,6 +96,75 @@ Window Session Tag: ${windowSessionId}`
   }
 
   /**
+   * Generates a Multi-Persona Swarm Plan (Guest vs Receptionist vs Hotel Owner)
+   * Each persona operates in a DEDICATED Chrome window with distinct credentials and role responsibilities.
+   */
+  generatePersonaSwarmPlan() {
+    const config = this.getConfig() || {};
+    const projectName = config.project || path.basename(this.cwd);
+    const baseUrl = config.baseUrl || "http://localhost:3000";
+
+    const guestSession = this.generateWindowSessionId('guest');
+    const receptionistSession = this.generateWindowSessionId('receptionist');
+    const ownerSession = this.generateWindowSessionId('owner');
+
+    const guestWorker = {
+      TypeName: "self",
+      Role: "QA Guest Persona",
+      Model: "inherit",
+      Workspace: "inherit",
+      WindowSession: guestSession,
+      Prompt: `Act as a Walk-in Guest (Khách vãng lai / Khách thuê phòng) testing "${projectName}".
+OPERATE ON DEDICATED CHROME WINDOW:
+1. Call \`new_page(url: "${baseUrl}/guest")\` to spawn your dedicated Guest window.
+2. Select a service / room request (e.g. Request extra towel, room cleaning, or food order).
+3. Fill required fields with dynamic payload and click Submit.
+4. Verify instant UI feedback (status moves to "Pending / Chờ xử lý"), 0 console errors, 0 network 4xx/5xx.
+5. Capture screenshot to harness-out/screenshots/${guestSession}/guest-submitted.png.
+6. Call \`close_page\` when done. Report result and emitted event payload.`
+    };
+
+    const receptionistWorker = {
+      TypeName: "self",
+      Role: "QA Receptionist Persona",
+      Model: "inherit",
+      Workspace: "inherit",
+      WindowSession: receptionistSession,
+      Prompt: `Act as a Hotel Receptionist (Lễ tân khách sạn / Hotel Ops) testing "${projectName}".
+OPERATE ON DEDICATED CHROME WINDOW:
+1. Call \`new_page(url: "${baseUrl}/owner/operations")\` to spawn your dedicated Receptionist window.
+2. Listen for the realtime incoming request from Guest (WebSocket room assertion).
+3. Verify incoming notification toast / audio trigger / badge update without page reload.
+4. Click "Approve / Tiếp nhận" on the guest's request.
+5. Verify status changes to "Approved / Đã tiếp nhận", 0 console errors, 0 network 4xx/5xx.
+6. Capture screenshot to harness-out/screenshots/${receptionistSession}/receptionist-approved.png.
+7. Call \`close_page\` when done. Report confirmation status.`
+    };
+
+    const ownerWorker = {
+      TypeName: "self",
+      Role: "QA Hotel Owner Persona",
+      Model: "inherit",
+      Workspace: "inherit",
+      WindowSession: ownerSession,
+      Prompt: `Act as a Hotel Owner (Chủ khách sạn / Admin) testing "${projectName}".
+OPERATE ON DEDICATED CHROME WINDOW:
+1. Call \`new_page(url: "${baseUrl}/owner/dashboard")\` to spawn your dedicated Owner window.
+2. Inspect room inventory, tape chart allocations, and revenue metrics.
+3. Verify in-place tab isolation (drawer/modal opens cleanly, zero cross-tab redirects).
+4. Verify 0 console errors, 0 network 4xx/5xx.
+5. Capture screenshot to harness-out/screenshots/${ownerSession}/owner-audit.png.
+6. Call \`close_page\` when done. Report high-level management health.`
+    };
+
+    return {
+      projectName,
+      strategy: "multi_persona_swarm",
+      personas: [guestWorker, receptionistWorker, ownerWorker]
+    };
+  }
+
+  /**
    * Generates an isolated branch fixer subagent specification
    */
   generateFixerWorker(incident = null) {

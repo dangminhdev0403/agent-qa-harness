@@ -37,6 +37,7 @@ CÁC LỆNH TỰ ĐỘNG HÓA & TIỆN ÍCH:
 
 ĐIỀU PHỐI SUB-AGENTS SONG SONG:
   subagents:plan       Xuất JSON kế hoạch điều phối 2 Sub-Agents song song (Code Tester + Flow Tester với cửa sổ Chrome riêng biệt)
+  subagents:personas   Xuất JSON kế hoạch Swarm Đa Persona (Khách vãng lai, Lễ tân, Chủ khách sạn trên 3 cửa sổ Chrome riêng biệt)
   subagents:fix        Xuất JSON cấu hình Sub-Agent tự sửa lỗi trên nhánh cô lập (Workspace: 'branch')
 
 TÙY CHỌN BẢO VỆ & AN TOÀN:
@@ -165,6 +166,13 @@ async function main() {
     const dispatcher = new SubagentDispatcher(process.cwd());
     const fixer = dispatcher.generateFixerWorker();
     console.log(JSON.stringify(fixer, null, 2));
+    process.exit(0);
+  }
+
+  if (command === 'subagents:personas') {
+    const dispatcher = new SubagentDispatcher(process.cwd());
+    const plan = dispatcher.generatePersonaSwarmPlan();
+    console.log(JSON.stringify(plan, null, 2));
     process.exit(0);
   }
 

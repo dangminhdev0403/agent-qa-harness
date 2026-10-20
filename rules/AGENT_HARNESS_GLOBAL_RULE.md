@@ -12,6 +12,7 @@ All AI agents (Antigravity, Codex, Orca) MUST strictly execute this deterministi
 3. **Subagent Swarm Dispatch (Speed Acceleration)**:
    - Worker 1 (`QA Code Gatekeeper`, model: flash): `agent-harness test:code --auto-start`.
    - Worker 2 (`QA Flow Inspector`, model: inherit): Spawn dedicated window via `new_page(url)`, bind with `select_page`, verify flows, teardown with `close_page`. NEVER hijack open tabs.
+   - Multi-Persona Verification: Execute `agent-harness subagents:personas` to spawn Guest, Receptionist, and Owner subagents on 3 dedicated Chrome windows to verify end-to-end realtime flow without session collisions.
 
 ### 2. FEATURE DEVELOPMENT SYNC (Living Harness Spec)
 Never finalize code without syncing the harness spec. Before task completion:
