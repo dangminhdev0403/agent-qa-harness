@@ -1,0 +1,88 @@
+{
+  "$schema": "./node_modules/agents-testing-with-workflow/schema/harness.schema.json",
+  "project": "my-application",
+  "baseUrl": "http://localhost:3000",
+  "timeoutMs": 30000,
+  "outputDir": "harness-out",
+
+  "static": {
+    "enabled": true,
+    "commands": [
+      {
+        "name": "UI Verification Rules",
+        "cmd": "node scripts/verify-ui-rules.cjs"
+      },
+      {
+        "name": "Contract & Schema Check",
+        "cmd": "npm run test:contracts"
+      }
+    ]
+  },
+
+  "realtime": {
+    "enabled": true,
+    "provider": "socket.io",
+    "scenarios": [
+      {
+        "name": "order-notification-roundtrip",
+        "description": "Verifies that when an order is created, the staff socket receives ORDER_CREATED event",
+        "receiver": {
+          "endpoint": "/staff-ops",
+          "auth": { "token": "Bearer test-jwt-token", "role": "STAFF" },
+          "listenEvent": "ORDER_CREATED",
+          "assertPayload": {
+            "status": "PENDING"
+          }
+        },
+        "trigger": {
+          "type": "http",
+          "method": "POST",
+          "path": "/api/v1/orders",
+          "body": {
+            "customerId": "cust-test-1",
+            "items": [{ "sku": "ITEM-1", "quantity": 2 }]
+          }
+        },
+        "timeoutMs": 4000
+      }
+    ]
+  },
+
+  "concurrency": {
+    "enabled": true,
+    "scenarios": [
+      {
+        "name": "anti-double-approval-gate",
+        "description": "Fires 5 simultaneous approvals for the same transaction - exactly 1 must succeed",
+        "method": "POST",
+        "path": "/api/v1/orders/ORD-TEST-001/approve",
+        "headers": {
+          "Authorization": "Bearer admin-token"
+        },
+        "concurrentBurst": 5,
+        "injectRequestId": true,
+        "assert": {
+          "expected200": 1,
+          "expectedConflictOrBad": 4
+        }
+      }
+    ]
+  },
+
+  "browser": {
+    "enabled": true,
+    "zeroConsoleErrors": true,
+    "zeroNetworkErrors": true,
+    "captureScreenshots": true,
+    "routes": [
+      {
+        "path": "/dashboard",
+        "waitForSelector": "[data-testid='metrics-grid']"
+      },
+      {
+        "path": "/orders",
+        "waitForSelector": "table"
+      }
+    ]
+  }
+}

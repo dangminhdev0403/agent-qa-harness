@@ -1,0 +1,73 @@
+name: universal-qa-harness
+description: |
+  Universal Multi-Project Autonomous QA Harness for Archon.
+  Orchestrates Static, Realtime Socket Probes, Concurrency Invariants, and Chrome Routes.
+interactive: false
+worktree:
+  enabled: false
+
+nodes:
+  # ----------------------------------------------------
+  # STEP 1: Verify presence of harness.config.json
+  # ----------------------------------------------------
+  - id: check-harness-config
+    bash: |
+      if [ ! -f "harness.config.json" ] && [ ! -f ".harness.json" ]; then
+        echo " [ERROR] No harness.config.json detected in current workspace!"
+        echo " Run 'npx agent-harness init' to generate a starter config."
+        exit 1
+      fi
+      echo " Harness configuration confirmed."
+    timeout: 15000
+
+  # ----------------------------------------------------
+  # STEP 2: Tier 0 - Static & Contract Gate
+  # ----------------------------------------------------
+  - id: tier0-static-gate
+    bash: |
+      npx agent-harness --tier 0
+    depends_on: [check-harness-config]
+    timeout: 45000
+
+  # ----------------------------------------------------
+  # STEP 3: Tier 1 - Realtime Socket Probe (Parallel Lane)
+  # ----------------------------------------------------
+  - id: tier1-realtime-probe
+    bash: |
+      npx agent-harness --tier 1
+    depends_on: [tier0-static-gate]
+    timeout: 60000
+
+  # ----------------------------------------------------
+  # STEP 4: Tier 2 - Concurrency & Idempotency (Parallel Lane)
+  # ----------------------------------------------------
+  - id: tier2-concurrency-gate
+    bash: |
+      npx agent-harness --tier 2
+    depends_on: [tier0-static-gate]
+    timeout: 60000
+
+  # ----------------------------------------------------
+  # STEP 5: Tier 3 - Browser & Chrome Route Verification
+  # ----------------------------------------------------
+  - id: tier3-browser-scan
+    bash: |
+      npx agent-harness --tier 3
+    depends_on: [tier0-static-gate]
+    timeout: 90000
+
+  # ----------------------------------------------------
+  # STEP 6: Convergence & Evaluation
+  # ----------------------------------------------------
+  - id: evaluate-harness-run
+    bash: |
+      echo "=== EVALUATING HARNESS TEST REPORT ==="
+      if [ -f "harness-out/INCIDENT_PACK.json" ]; then
+        echo " FAILURES DETECTED! Printing INCIDENT_PACK.json summary:"
+        cat harness-out/INCIDENT_PACK.json
+        exit 1
+      fi
+      echo " ALL TIERS PASSED WITH ZERO ERRORS!"
+      cat harness-out/HARNESS_REPORT.md
+    depends_on: [tier1-realtime-probe, tier2-concurrency-gate, tier3-browser-scan]
+    timeout: 15000

@@ -1,0 +1,33 @@
+{
+  "name": "agents-testing-with-workflow",
+  "version": "1.0.0",
+  "description": "Universal 4-Tier Autonomous QA & E2E Testing Harness for AI Agents with Archon & Chrome DevTools",
+  "main": "src/index.mjs",
+  "type": "module",
+  "bin": {
+    "agent-harness": "./bin/harness.mjs",
+    "qa-harness": "./bin/harness.mjs"
+  },
+  "scripts": {
+    "harness": "node ./bin/harness.mjs run",
+    "test:self": "node ./bin/harness.mjs --help"
+  },
+  "keywords": [
+    "qa-harness",
+    "agent-testing",
+    "archon-workflow",
+    "realtime-socket-probe",
+    "chrome-devtools",
+    "concurrency-testing",
+    "e2e-automation"
+  ],
+  "author": "dangminhdev0403",
+  "license": "MIT",
+  "dependencies": {
+    "socket.io-client": "^4.8.1",
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
