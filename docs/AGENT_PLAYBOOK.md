@@ -82,11 +82,19 @@ STRICT INVARIANT: When the user requests subagent execution (e.g. "thực thi c�
 
 ---
 
-## 5. DEEP UI INTERACTION & CROSS-ROLE REALTIME JOURNEY PROTOCOL
-Static URL navigation or stopping at login is strictly insufficient. For all UI flow tests, agents MUST execute active DOM interactions:
-1. **Nav Links & Sub-Tabs Exploration**: Click top tabs (`[role="tab"]`), category filters, and sub-nav links. Assert state changes in-place without page refresh.
-2. **Buttons & In-Place Drawers**: Click action buttons ("Tạo mới", "Thêm", "Lọc", "Chi tiết", "Xem"). Verify Modal or Drawer/Sheet opens in-place (verifying Tab Isolation Standard: zero disruptive cross-tab redirects), then close cleanly.
-3. **Form Submissions & Validation**: Test entering inputs and submitting empty/invalid forms -> verify human-readable error messages appear (never crash).
+## 5. DEEP UI INTERACTION, CRUD & DRAG-AND-DROP PROTOCOL
+Static URL navigation or stopping at login is strictly insufficient. For all UI flow tests, agents MUST execute active DOM interactions using Chrome MCP tools:
+1. **DOM Snapshot & Element Discovery**: Call `take_snapshot(pageId)` on every tested screen to obtain element `uid`s (buttons, tabs, inputs, draggable cards).
+2. **CRUD Operations (Create / Read / Update / Delete)**:
+   - **CREATE**: Click "Thêm phòng", "Tạo mới", or "Đặt dịch vụ" button. Verify Modal/Drawer opens in-place (verifying Tab Isolation: zero full-page redirects). Fill input fields via `fill(pageId, uid, value)`. Submit form and verify the new item appears in the list.
+   - **READ / TABS**: Click top tabs (`[role="tab"]`), category filters, and sorting headers (TanStack table sort). Assert view updates in-place without page reload.
+   - **UPDATE**: Click edit buttons on a table row or card. Modify values and save -> verify in-place feedback.
+   - **DELETE / CANCEL**: Click cancel/delete button -> verify confirmation dialog (`SwalVietSage`) -> confirm or dismiss safely.
+3. **Drag-and-Drop Operations (Tape Chart & Room Grids)**:
+   - For schedules, room grids, or sortable lists built with `@dnd-kit`:
+   - Locate the source reservation/room card (`from_uid`) and destination cell/room (`to_uid`).
+   - Call `drag(pageId, from_uid, to_uid)` to execute drag-and-drop reallocation.
+   - Verify reservation bar / room moves smoothly to the new slot without layout breaks or uncaught console errors.
 4. **End-to-End Realtime Journey (Khách -> Lễ tân -> Chủ khách sạn)**:
    - Guest Subagent (`/g/[qrCode]`): Selects service, submits room request, receives request ID.
    - Frontdesk Subagent (`/staff/front-desk`): Receives realtime WebSocket update, clicks "Tiếp nhận" / "Hoàn thành", verifies status badge transitions without reload.

@@ -60,12 +60,20 @@ STRICT PROTOCOL: When user triggers subagent execution ("thực thi sub_agents",
 2. The AI Agent MUST IMMEDIATELY execute tool calls: `invoke_subagent(TypeName: "self", Role: worker.Role, Model: "inherit", Prompt: worker.Prompt)`.
 3. Auto-load credentials: If `account.json` or `config.personas` exists, the subagent prompt already contains valid login credentials. Subagents execute autonomous flow testing on dedicated Chrome windows (`isolatedContext`) and report back upon completion.
 
-### 7. DEEP UI INTERACTION MANDATE (NO SHALLOW NAVIGATION)
-STRICT INVARIANT: Merely navigating to routes or stopping at login is considered an incomplete test. Subagents MUST perform concrete DOM interactions:
-1. Click sub-navigation tabs (`[role="tab"]`), category filters, and pills to verify in-place state transitions.
-2. Click primary action buttons to open Modals/Drawers in-place (verifying Tab Isolation Standard: zero disruptive redirects) and close them cleanly.
-3. Verify form validations: test submitting empty/invalid inputs and verify human-readable feedback (never crash or throw uncaught errors).
-4. Cross-Role Realtime E2E Journey: Execute Khách (tạo yêu cầu trên /g/[qrCode]) -> Lễ tân (nhận WebSocket và bấm duyệt trên /staff/front-desk).
+### 7. DEEP UI INTERACTION, CRUD & DRAG-AND-DROP MANDATE (NO SHALLOW NAVIGATION)
+STRICT INVARIANT: Merely navigating to routes or stopping at login is considered an incomplete test. Subagents MUST execute active DOM interactions using Chrome MCP tools:
+1. **DOM Snapshot Discovery**: Call `take_snapshot(pageId)` to locate interactive element UIDs.
+2. **CRUD Operations**:
+   - **CREATE**: Click "Thêm phòng" / "Tạo mới" / "Đặt dịch vụ" -> verify Modal/Drawer opens in-place -> fill form fields via `fill(pageId, uid, value)` -> submit -> verify new item appears.
+   - **READ / TABS**: Click filter pills, category buttons, and tabs (`[role="tab"]`) to verify in-place filtering without full-page reloads.
+   - **UPDATE**: Click edit buttons on cards/rows -> change values -> verify saved state.
+   - **DELETE / CANCEL**: Click cancel/delete button -> verify confirm dialog -> dismiss safely.
+3. **Drag-and-Drop Operations (@dnd-kit)**:
+   - For schedules, Tape Chart, and room allocation grids:
+   - Locate source reservation element (`from_uid`) and destination cell/room (`to_uid`).
+   - Call `drag(pageId, from_uid, to_uid)` to execute drag-and-drop reallocation.
+   - Verify room/reservation moves to the new slot without layout breaks or uncaught console errors.
+4. **Cross-Role Realtime E2E Journey**: Execute Khách (tạo yêu cầu trên /g/[qrCode]) -> Lễ tân (nhận WebSocket và bấm duyệt trên /staff/front-desk).
 
 ### 8. FIX VS NO-FIX BOUNDARY STANDARD (RBAC & DATABASE INVARIANTS)
 Remediation must strictly respect architectural boundaries:

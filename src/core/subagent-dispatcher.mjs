@@ -238,27 +238,26 @@ ${sampleRoutes.map(r => `• ${baseUrl}${r}`).join('\n')}
 
 ${authInstruction}
 
-OPERATIONAL PROTOCOL (DEEP INTERACTIVE UI TESTING):
-1. WINDOW CREATION: Call chrome-devtools-mcp tool \`new_page(url: "${baseUrl}${sampleRoutes[0] || ''}", isolatedContext: "${sessionId}")\`.
+OPERATIONAL PROTOCOL (MANDATORY CRUD & DRAG-AND-DROP INTERACTIVE TESTING):
+1. WINDOW CREATION: Call chrome-devtools-mcp tool \`new_page(url: "${baseUrl}${sampleRoutes[0] || ''}", isolatedContext: "${sessionId}")\` and save returned \`pageId\`.
 2. AUTHENTICATION & LOGIN GATE:
    - If redirected to login page (${loginPath}):
-     ${username && password ? `- Enter username "${username}" and password "${password}".\n     - Click submit and wait for dashboard navigation.` : `- Authenticate with valid ${mod.role} credentials if available.`}
+     ${username && password ? `- Locate username input uid via \`take_snapshot(pageId)\`, fill "${username}".\n     - Locate password input uid, fill "${password}".\n     - Click submit button uid and wait for navigation.` : `- Authenticate with valid ${mod.role} credentials if available.`}
 
-3. MANDATORY DEEP UI INTERACTION ON EVERY ROUTE (DO NOT JUST NAVIGATE):
-   For each route in TESTING SCOPE:
-   a. Navigate: \`navigate_page(url: "${baseUrl}<route>")\`.
-   b. Nav Links & Sub-Tabs Exploration:
-      - Scan for navigation links, category pills, and tabs (\`[role="tab"]\`, \`nav a\`, \`.filter-btn\`).
-      - Click active tabs/filters to verify state updates in-place without page reload.
-   c. Interactive Buttons, Cards & In-Place Drawers:
-      - Locate primary action buttons ("Tạo mới", "Thêm", "Lọc", "Xem chi tiết", "Duyệt").
-      - Click to verify modal or drawer opens in-place (verifying Tab Isolation Standard: zero disruptive cross-tab redirects).
-      - Close modal/drawer cleanly via close button or Escape key.
-   d. Form Submission & Validation Verification:
-      - On form screens, test entering input values. Test submitting empty/invalid inputs to verify user-friendly validation messages appear (never crash or throw uncaught errors).
-   e. Console & Network Assertions:
-      - Check console errors: \`list_console_messages\` -> assert ZERO error level messages.
-      - Check network errors: \`list_network_requests\` -> assert ZERO 4xx/5xx responses.
+3. DEEP DOM INTERACTION & CRUD OPERATIONS (STRICTLY FORBIDDEN TO JUST "GET LINKS"):
+   On each tested screen, execute real user actions using Chrome MCP tools:
+   a. Snapshot Discovery: Call \`take_snapshot(pageId)\` to inspect the a11y tree and obtain element \`uid\`s.
+   b. CRUD Operations (Create / Update / Status Change):
+      - [CREATE]: Locate and click primary action buttons ("Thêm", "Tạo mới", "Đặt dịch vụ", "Gửi yêu cầu").
+        Verify Modal/Drawer opens in-place (verifying Tab Isolation Standard: zero disruptive redirects).
+        Fill input fields via \`fill(pageId, uid, value)\`. Submit and verify new item appears.
+      - [UPDATE]: Click edit/update buttons on cards or table rows. Modify field values and verify in-place save.
+      - [TABS & FILTERING]: Click filter pills, category buttons, and tabs (\`[role="tab"]\`). Verify view filters without full page reload.
+   c. DRAG-AND-DROP INTERACTIONS (Tape Chart / Room Grid / Sortable Lists):
+      - Where draggable room cards or sortable list items exist (e.g. Tape Chart, room reallocations):
+        Locate source element (\`from_uid\`) and destination drop zone (\`to_uid\`).
+        Call \`drag(pageId, from_uid, to_uid)\` to execute the drag-and-drop interaction.
+        Verify card/room relocates smoothly to the target slot without layout break or console error.
 
 4. FIX VS NO-FIX BOUNDARY STANDARD:
    - 🔴 FORBIDDEN TO TOUCH (Report Only):
@@ -270,9 +269,9 @@ OPERATIONAL PROTOCOL (DEEP INTERACTIVE UI TESTING):
      * Contract Binding: Align form payload keys with backend DTOs, fix incorrect URL query parameters.
 
 5. EVIDENCE & CLEAN TEARDOWN:
-   - Capture checkpoint screenshot: \`take_screenshot(filePath: "harness-out/screenshots/${sessionId}/checkpoint.png")\`.
-   - ALWAYS call \`close_page\` when finished (PASS or FAIL).
-   - Report concise execution summary (routes tested, UI actions performed, console/network status, blockers).`;
+   - Capture checkpoint screenshot: \`take_screenshot(pageId, filePath: "harness-out/screenshots/${sessionId}/checkpoint.png")\`.
+   - ALWAYS call \`close_page(pageId)\` when finished (PASS or FAIL).
+   - Report concise execution summary (routes tested, CRUD/Drag actions performed, console/network status, blockers).`;
 
       const roleTitle = `QA ${mod.name} Inspector`;
 

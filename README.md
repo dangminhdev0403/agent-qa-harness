@@ -236,21 +236,31 @@ Lệnh này quét toàn bộ cấu hình dự án để phát hiện 3 rào cả
 
 ---
 
-## 🖱️ Chuẩn Mực Tương Tác Giao Diện Sâu & Luồng Khách - Lễ Tân
+## 🖱️ Chuẩn Mực Tương Tác Giao Diện Sâu: CRUD & Kéo Thả Cập Nhật Phòng (Deep UI Flow)
 
 > **NGHIÊM CẤM TEST QUA LOA CHỈ DỪNG LẠI Ở LOGIN HOẶC LOAD TRANG TĨNH.**  
-> Một bài test UI hoàn chỉnh bắt buộc phải kích hoạt các thao tác tương tác người dùng thực tế trên DOM:
+> Một bài test UI hoàn chỉnh bắt buộc phải kích hoạt các thao tác tương tác người dùng thực tế trên DOM qua Chrome MCP:
 
-### 1. 4 Thao Tác Bắt Buộc Trên Mọi Màn Hình
-1. **Duyệt Sub-Tabs & Bộ Lọc (`[role="tab"]`, `nav a`)**: Bấm chuyển đổi các tab danh mục, bộ lọc trạng thái (ví dụ: Tất cả, Đang xử lý, Hoàn thành), xác nhận giao diện đổi nội dung tại chỗ mà **không reload toàn trang**.
-2. **Kích Hoạt Nút Bấm & Mở Drawer/Modal Tại Chỗ**:
-   - Bấm các nút thao tác chính (*"Tạo mới"*, *"Thêm phòng"*, *"Chi tiết"*, *"Xem đơn hàng"*).
-   - Xác nhận Modal hoặc Drawer mở mượt mà **tại chỗ (Tab Isolation Standard)**, tuyệt đối không bị redirect văng sang trang khác.
-   - Đóng Drawer/Modal an toàn bằng nút X hoặc phím ESC.
-3. **Thao Tác Thẻ Card & Bảng Dữ Liệu**: Hover, click vào các hàng trong bảng hoặc thẻ card xem phản hồi.
-4. **Kiểm Thử Form & Validation Lỗi Thân Thiện**: Thử nhập dữ liệu và thử bấm gửi form trống để kiểm tra thông báo validation lỗi (không để crash màn hình trắng hay văng unhandled exception).
+### 1. Thao Tác CRUD Nghiệp Vụ Thực Tế Trên Giao Diện
+1. **CREATE (Thêm mới)**: 
+   - Click nút *"Thêm phòng"*, *"Tạo đơn"*, hoặc *"Đặt dịch vụ"*.
+   - Xác nhận Modal / Drawer mở mượt mà **tại chỗ (Tab Isolation Standard)**, không bị redirect văng trang.
+   - Nhập liệu qua `fill(pageId, uid, value)`, bấm Lưu và kiểm tra item mới hiển thị trên bảng.
+2. **READ & TABS (Duyệt Sub-Tabs & Bộ Lọc)**: 
+   - Bấm chuyển đổi giữa các tab trạng thái (*Tất cả, Đang có khách, Phòng trống, Đang dọn*) và header sắp xếp cột (TanStack Table sort).
+   - Xác nhận giao diện đổi nội dung tại chỗ mà **không reload toàn trang**.
+3. **UPDATE (Cập nhật dữ liệu)**: 
+   - Click nút Chỉnh sửa trên thẻ phòng hoặc hàng trong bảng. Sửa đổi thông tin và bấm Lưu.
+4. **DELETE / CANCEL (Hủy / Xóa)**:
+   - Click nút Hủy đơn / Xóa -> kiểm tra SweetAlert popup xác nhận -> bấm Hủy an toàn.
 
-### 2. Kịch Bản Realtime Xuyên Suốt (End-to-End Journey: Khách -> Lễ Tân)
+### 2. Thao Tác Kéo Thả Trực Quan (Drag-and-Drop trên Tape Chart & Sơ Đồ Phòng)
+Đối với các màn hình quản trị phòng, sơ đồ Tape Chart hoặc danh sách kéo thả sắp xếp sử dụng thư viện `@dnd-kit`:
+* Subagent gọi `take_snapshot(pageId)` để xác định UID của thẻ đặt phòng (`from_uid`) và ô phòng đích (`to_uid`).
+* Kích hoạt lệnh kéo thả thực tế: `drag(pageId, from_uid, to_uid)`.
+* Xác nhận thẻ phòng di chuyển mượt mà sang vị trí mới, cập nhật trạng thái phòng mà không gây vỡ layout hay nổ lỗi Console.
+
+### 3. Kịch Bản Realtime Xuyên Suốt (End-to-End Journey: Khách -> Lễ Tân)
 ```mermaid
 sequenceDiagram
     autonumber
