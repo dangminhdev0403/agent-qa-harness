@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { HARNESS_MODULES, partitionRoutesByModule } from './module-registry.mjs';
 import { resolveDynamicRoute } from './prerequisite-inspector.mjs';
+import { UNIVERSAL_INTERACTIVE_JOURNEYS, listJourneysForRole, generateChromeMCPInstructions } from './journey-registry.mjs';
 
 /**
  * Subagent Dispatcher - Prepares optimized swarm subagent execution plans
@@ -174,14 +175,27 @@ AUTHENTICATION:
 - Credentials: Username="${ownerAuth?.username || ownerAuth?.email || 'thucvn@gmail.com'}", Password="${ownerAuth?.password || 'Admin@123'}".
 
 OPERATE ON DEDICATED CHROME WINDOW:
-1. Call \`new_page(url: "${baseUrl}/owner/dashboard", isolatedContext: "${ownerSession}")\`.
-2. DEEP INTERACTION:
-   - Navigate to /hotels/${hotelId}/rooms or Tape Chart.
-   - Click room status filter tabs (Tất cả, Đang có khách, Phòng trống) -> verify in-place view update.
-   - Click a room card -> verify room details Drawer/Sheet opens in-place (verifying Tab Isolation).
-   - Close drawer.
-3. VERIFICATION:
-   - Assert 0 console errors, 0 network 4xx/5xx.
+1. Call \`new_page(url: "${baseUrl}/owner/dashboard", isolatedContext: "${ownerSession}")\` and save \`pageId\`.
+2. DEEP DOM INTERACTION & CRUD OPERATIONS (STRICTLY FORBIDDEN TO JUST "GET LINKS"):
+   a. Batch Price & Allocation Modal (In-Place Dialog):
+      - Navigate to "${baseUrl}/owner/hotels/${hotelId}/channel-manager".
+      - Call \`take_snapshot(pageId)\`, locate and click button "Cập nhật hàng loạt".
+      - Verify modal dialog opens in-place without page navigation.
+      - Click "Chọn tất cả hạng phòng hợp lệ".
+      - Call \`fill(pageId, price_uid, "2500000")\` to input new price.
+      - Click button "Hủy bỏ" or "Áp dụng cập nhật" to close modal in-place.
+   b. Inline Cell Editing & Status Toggle (Zero-Disruptive Auto-Save):
+      - Locate an inline cell (e.g. "Đóng bán Single Room, ngày ...").
+      - Call \`click(pageId, toggle_uid)\` -> verify status flips to "Đang đóng bán" in-place.
+      - Click again to restore "Đang mở bán".
+      - Click an inline price cell (e.g. "2.100.000 ₫") -> assert focused textbox appears.
+   c. Drag-and-Drop Floor Plan / Tape Chart (@dnd-kit):
+      - In Room Grid / Tape Chart, locate draggable reservation block (\`from_uid\`) and destination slot (\`to_uid\`).
+      - Call \`drag(pageId, from_uid, to_uid)\`.
+      - Assert reservation shifts slot smoothly without page reload.
+3. FIX VS NO-FIX BOUNDARIES:
+   - Do NOT touch database or alter RBAC guards (report-only).
+   - In-place fix allowed for notification copy, click handlers, or contract keys.
 4. Capture screenshot to harness-out/screenshots/${ownerSession}/owner-audit.png.
 5. Call \`close_page\` when done. Report management overview.`
     };

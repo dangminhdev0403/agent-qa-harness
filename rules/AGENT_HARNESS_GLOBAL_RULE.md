@@ -63,10 +63,10 @@ STRICT PROTOCOL: When user triggers subagent execution ("thực thi sub_agents",
 ### 7. DEEP UI INTERACTION, CRUD & DRAG-AND-DROP MANDATE (NO SHALLOW NAVIGATION)
 STRICT INVARIANT: Merely navigating to routes or stopping at login is considered an incomplete test. Subagents MUST execute active DOM interactions using Chrome MCP tools:
 1. **DOM Snapshot Discovery**: Call `take_snapshot(pageId)` to locate interactive element UIDs.
-2. **CRUD Operations**:
-   - **CREATE**: Click "Thêm phòng" / "Tạo mới" / "Đặt dịch vụ" -> verify Modal/Drawer opens in-place -> fill form fields via `fill(pageId, uid, value)` -> submit -> verify new item appears.
+2. **CRUD & Interactive Operations**:
+   - **CREATE & BATCH MODAL**: Click "Thêm phòng" / "Tạo mới" / "Cập nhật hàng loạt" -> verify Modal/Drawer opens in-place without page redirect (Tab Isolation Standard) -> fill form fields via `fill(pageId, uid, value)` -> submit or cancel cleanly -> verify in-place feedback.
    - **READ / TABS**: Click filter pills, category buttons, and tabs (`[role="tab"]`) to verify in-place filtering without full-page reloads.
-   - **UPDATE**: Click edit buttons on cards/rows -> change values -> verify saved state.
+   - **UPDATE & INLINE CELL AUTO-SAVE**: Click inline cell buttons (e.g. stop-sell / open-sell toggles) -> verify instantaneous state change in-place. Click inline price cells -> verify focused input textbox appears (`textbox focusable focused`) -> type new value -> verify auto-save without page reload.
    - **DELETE / CANCEL**: Click cancel/delete button -> verify confirm dialog -> dismiss safely.
 3. **Drag-and-Drop Operations (@dnd-kit)**:
    - For schedules, Tape Chart, and room allocation grids:
