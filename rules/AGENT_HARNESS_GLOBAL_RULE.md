@@ -1,45 +1,29 @@
-# Quy Tắc Toàn Cục: Tự Động Hóa Kiểm Thử & Chống Quên Kịch Bản (Agent Harness Protocol)
+<!-- AGENT_HARNESS_PROTOCOL_V1: COMPACT MACHINE SPECIFICATION -->
+## Mandatory Autonomous QA & Living Harness Protocol (Agent Spec)
 
-> **Hướng dẫn cài đặt:** Dán khối quy tắc bên dưới vào file cấu hình luật của Agent (như `.agents/AGENTS.md`, `docs/RULES.md` hoặc Global Agent Rules của Antigravity & Codex).  
-> Quy tắc này là **bắt buộc thi hành (MANDATORY)** cho mọi Agent trên mọi dự án full-stack.
+All AI agents (Antigravity, Codex, Orca) MUST strictly execute this deterministic state machine:
 
----
+### 1. TRIGGER HANDLING ("Bật harness" | "kích hoạt harness" | "test harness" | Ambiguous QA request)
+1. **Preflight Sync**: Execute `agent-harness sync`. Harness auto-scans routes, socket gateways, mutations, and creates/upgrades `harness.config.json`.
+2. **Disambiguation Gate**: Invoke `ask_question` tool with 4 options:
+   - `(Recommended) Full Dual-Pass Verification (Code Stability + Chrome Flow)`
+   - `Mode 1: Code & System Stability Gate (tsc, build, static rules, sockets, concurrency)`
+   - `Mode 2: Chrome DevTools MCP & Browser Flows (0-console, 0-net-4xx/5xx, screenshots)`
+   - `Inspect Synced Map & Current Status Only`
+3. **Dispatch**: Run target command with `--auto-start` (STRICT START ONLY, NEVER DEV) and `--isolate-branch`.
 
-```markdown
-<!-- BẮT ĐẦU QUY TẮC AGENT HARNESS PROTOCOL -->
-## Mandatory Living Harness & Autonomous QA Gate
+### 2. FEATURE DEVELOPMENT SYNC (Living Harness Spec)
+Never finalize code without syncing the harness spec. Before task completion:
+- New UI Screen/Route: `agent-harness add:flow "<feature-name>"`
+- New Socket Event: `agent-harness add:socket "<feature-name>"`
+- New Mutation/Approval: `agent-harness add:concurrency "<feature-name>"`
+(The engine deduplicates by semantic signature and performs in-place upgrades).
 
-Mọi Agent (Antigravity, Codex, Orca) làm việc trong repository này BẮT BUỘC tuân thủ chu trình sau:
-
-1. **Phản Xạ Với Câu Lệnh "Bật harness"**:
-   - Khi nhận câu lệnh "Bật harness" / "Kích hoạt harness":
-     * Tự động chạy ngầm `agent-harness sync` để kiểm tra và tự đồng bộ nếu dự án chưa có hoặc thiếu kịch bản.
-     * Gọi ngay công cụ `ask_question` hiển thị 3 lựa chọn (Toàn diện, Test Code & Ổn định, hoặc Test Chrome Flow).
-
-2. **Khởi Tạo Kịch Bản Tự Động (Step-Zero Auto-Discovery)**:
-   - Nếu thư mục gốc dự án chưa có file `harness.config.json`, Agent BẮT BUỘC chạy ngay:
-     ```bash
-     agent-harness discover
-     ```
-     Lệnh này tự động phân tích và lập chỉ mục toàn bộ routes giao diện, websocket gateways và các mutation endpoints quan trọng.
-
-2. **Quy Chuẩn Đồng Bộ Tính Năng Mới (Living Harness Spec)**:
-   - NGHIÊM CẤM hoàn thành task mà không ghi nhận kịch bản kiểm thử vào harness.
-   - Khi tạo mới hoặc chỉnh sửa tính năng:
-     * Chức năng Giao diện / Màn hình: `agent-harness add:flow "<tên-tính-năng>"`
-     * Chức năng Realtime / Socket: `agent-harness add:socket "<tên-tính-năng>"`
-     * Chức năng Duyệt đơn / Thanh toán / Trạng thái: `agent-harness add:concurrency "<tên-tính-năng>"`
-   - Hệ thống tự động so khớp và nâng cấp (upgrade) kịch bản cũ, không sinh rác trùng lặp.
-
-3. **Cổng Nghiệm Thu Tự Phục Hồi (Zero-Excuse Self-Healing Gate)**:
-   - Trước khi báo cáo hoàn thành nhiệm vụ cho User, Agent BẮT BUỘC chạy:
-     ```bash
-     agent-harness run
-     ```
-   - Nếu kết quả trả về mã lỗi 1 (FAIL):
-     * Mở file `harness-out/INCIDENT_PACK.json` để đọc chính xác nguyên nhân, payload và stacktrace.
-     * Tự động sửa mã nguồn tại file gây lỗi.
-     * Chạy lại probe mục tiêu (`agent-harness probe:<tier>`) cho đến khi đạt 100% PASSED.
-   - Tuyệt đối KHÔNG bàn giao công việc khi còn bất kỳ lỗi Console, Socket Timeout hay Race Condition nào chưa được giải quyết.
-<!-- KẾT THÚC QUY TẮC AGENT HARNESS PROTOCOL -->
-```
+### 3. SELF-HEALING & CIRCUIT BREAKER PROTOCOL
+- **Exit Code 0 (PASS)**: Task verified. Finalize report.
+- **Exit Code 2 (CIRCUIT_BREAKER_TRIPPED)**: STOP IMMEDIATELY. Max 3 remediation retries exceeded. DO NOT attempt further automated edits. Report blocker directly to user to prevent multi-agent infinite ping-pong.
+- **Exit Code 1 (FAIL)**:
+  1. Read `harness-out/INCIDENT_PACK.json` to extract failure tier, target, and payload.
+  2. Switch to isolated branch: `git checkout -b harness-fix/<target>-<timestamp>`.
+  3. Apply scoped fix strictly to the failing gateway/controller/component.
+  4. Re-run targeted probe: `agent-harness probe:<tier>` until green.
