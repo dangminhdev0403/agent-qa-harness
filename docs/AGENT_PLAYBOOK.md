@@ -5,6 +5,42 @@
 
 ---
 
+## ⚡ GIAO THỨC PHẢN ỨNG VỚI CÂU LỆNH: "BẬT HARNESS"
+
+Bất kỳ khi nào người dùng đưa ra câu lệnh:
+> **"Bật harness"** *(hoặc "kích hoạt harness", "bật test harness", "chạy harness")*
+
+Agent **BẮT BUỘC** tự động thực hiện chuỗi 3 phản xạ tự nhiên sau mà **KHÔNG CẦN NGƯỜI DÙNG PHẢI NHẮC**:
+
+### Phản xạ 1: Tự Động Kiểm Tra & Đồng Bộ (Auto-Sync)
+Agent chạy ngầm lệnh:
+```bash
+agent-harness sync
+```
+- Nếu dự án **chưa có** `harness.config.json` $\rightarrow$ Tự động quét và khởi tạo đầy đủ.
+- Nếu dự án **đang thiếu** các route mới, socket mới hay API mới vừa thêm $\rightarrow$ Tự động đồng bộ và nâng cấp kịch bản ngay lập tức.
+
+### Phản xạ 2: Hiển Thị Bảng Lựa Chọn Chế Độ (Interactive Options)
+Ngay sau khi đồng bộ xong, Agent lập tức gọi công cụ `ask_question` hiển thị bảng chọn phương án:
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  Hệ thống Harness đã đồng bộ sẵn sàng (X routes, Y sockets, Z locks). │
+│ Bạn muốn thực thi kiểm thử theo chế độ nào?                            │
+│                                                                        │
+│ ○ (Recommended) Chạy Toàn Diện Cả 2 Chế Độ (Code + Chrome Flow)        │
+│ ○ Chế độ 1: Test Code & Độ Ổn Định (Types, Build, Sockets, Concurrency) │
+│ ○ Chế độ 2: Test Flow Luồng & Giao Diện Thực Tế bằng Chrome MCP        │
+│ ○ Chỉ xem bản đồ đồng bộ và trạng thái hiện tại                        │
+│                                                                        │
+│                                      [ Submit ]   [ Skip ]             │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### Phản xạ 3: Thực Thi Chính Xác Chế Độ Đã Chọn
+- Người dùng chọn phương án nào $\rightarrow$ Kích hoạt ngay lệnh tương ứng (`agent-harness test:code`, `agent-harness test:flow` hoặc mở Chrome DevTools MCP thực thi).
+
+---
+
 ## 1. Vòng Đời Vận Hành Chuẩn Của Agent (The Agent Lifecycle)
 
 ```

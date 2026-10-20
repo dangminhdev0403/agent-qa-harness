@@ -6,6 +6,7 @@ import { executeHarness } from '../src/index.mjs';
 import { appendScenario, syncDiscoveredToConfig } from '../src/core/scenario-builder.mjs';
 import { autoDiscoverProject } from '../src/core/auto-discover.mjs';
 import { IsolationManager } from '../src/core/isolation-manager.mjs';
+import { checkAndSyncProject } from '../src/core/smart-sync.mjs';
 
 const args = process.argv.slice(2);
 const command = args[0] || 'run';
@@ -23,6 +24,7 @@ Cách dùng:
   run                  Chạy toàn diện cả 2 chế độ (Dual-pass)
 
 CÁC LỆNH TỰ ĐỘNG HÓA & TIỆN ÍCH:
+  sync                 TỰ ĐỘNG KIỂM TRA & ĐỒNG BỘ (Bật harness: tự quét nếu thiếu rồi sẵn sàng chạy)
   discover             TỰ ĐỘNG quét dự án và tạo/đồng bộ kịch bản (Zero-effort setup)
   init                 Khởi tạo file cấu hình mẫu harness.config.json tại thư mục hiện tại
   add:flow <tên>       Thêm/Nâng cấp kịch bản UI Flow mới (Tự động lọc trùng)
@@ -138,6 +140,11 @@ async function main() {
 
   if (command === 'discover') {
     await handleDiscover();
+    process.exit(0);
+  }
+
+  if (command === 'sync' || command === 'check-sync') {
+    await checkAndSyncProject(process.cwd());
     process.exit(0);
   }
 

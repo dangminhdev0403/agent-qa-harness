@@ -9,9 +9,14 @@
 <!-- BẮT ĐẦU QUY TẮC AGENT HARNESS PROTOCOL -->
 ## Mandatory Living Harness & Autonomous QA Gate
 
-Mọi Agent (Antigravity, Codex, Orca) làm việc trong repository này BẮT BUỘC tuân thủ chu trình 3 bước sau:
+Mọi Agent (Antigravity, Codex, Orca) làm việc trong repository này BẮT BUỘC tuân thủ chu trình sau:
 
-1. **Khởi Tạo Kịch Bản Tự Động (Step-Zero Auto-Discovery)**:
+1. **Phản Xạ Với Câu Lệnh "Bật harness"**:
+   - Khi nhận câu lệnh "Bật harness" / "Kích hoạt harness":
+     * Tự động chạy ngầm `agent-harness sync` để kiểm tra và tự đồng bộ nếu dự án chưa có hoặc thiếu kịch bản.
+     * Gọi ngay công cụ `ask_question` hiển thị 3 lựa chọn (Toàn diện, Test Code & Ổn định, hoặc Test Chrome Flow).
+
+2. **Khởi Tạo Kịch Bản Tự Động (Step-Zero Auto-Discovery)**:
    - Nếu thư mục gốc dự án chưa có file `harness.config.json`, Agent BẮT BUỘC chạy ngay:
      ```bash
      agent-harness discover
