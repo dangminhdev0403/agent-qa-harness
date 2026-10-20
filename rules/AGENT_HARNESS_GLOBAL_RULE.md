@@ -84,3 +84,12 @@ Remediation must strictly respect architectural boundaries:
   1. Error Notification Copy: Upgrade raw error codes (403 Forbidden, 500 Internal, TypeError) into clean, polite, human-readable toasts/alerts (e.g. "Bạn không có quyền thực hiện thao tác này").
   2. UI/UX Bugs: Broken button clicks, missing drawer state reset, z-index clipping, broken validations, typography floor violations (< 12px), missing `text-balance`.
   3. API/DTO Binding: Align frontend form payload keys with backend schema, fix query param names.
+
+### 9. MANDATORY REPORT-ONLY INCIDENT PROTOCOL (BÁO CÁO NGUYÊN NHÂN LỖI KHÔNG ĐƯỢC TỰ SỬA)
+Khi phát hiện lỗi KHÔNG THỂ hoặc KHÔNG ĐƯỢC PHÉP tự ý sửa (do nguyên tắc bảo vệ DB, chính sách RBAC bảo mật, hoặc phụ thuộc bên thứ 3):
+1. **Tuyệt đối không bỏ qua hoặc im lặng**: Subagent và Coordinator BẮT BUỘC phải tạo báo cáo phân tích chuyên sâu.
+2. **Cấu trúc Báo cáo Sự cố Bắt buộc**:
+   - **Vị trí & Endpoint**: Route URL giao diện và API backend tương ứng (kèm HTTP status code: 403, 404, 500).
+   - **Nguyên nhân gốc rễ (Root Cause)**: Chỉ ra chính xác lỗi kỹ thuật (ví dụ: thiếu cột DB do chưa chạy migration, lỗi Prisma P2022, thiếu quyền RBAC cụ thể).
+   - **Lý do không tự động sửa (Reason Held)**: Nêu rõ nguyên tắc kỹ thuật ràng buộc (ví dụ: *Quy tắc Zero-DB-Tampering cấm test harness tự động chạy migration làm thay đổi schema database*).
+   - **Đề xuất xử lý cho Developer / DBA**: Cung cấp lệnh hoặc giải pháp cụ thể để quản trị viên / lập trình viên thực thi an toàn (ví dụ: lệnh migration SQL, gán quyền hợp lệ).

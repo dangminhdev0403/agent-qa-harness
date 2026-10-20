@@ -113,3 +113,14 @@ When failures occur during UI flow testing, agents MUST observe strict remediati
 1. **Error Notification Copywriting & UX**: Upgrade raw technical error codes (`403 Forbidden`, `500 Internal`, `TypeError`) into clear, human-readable toasts/alerts (e.g. *"Bạn không có quyền thực hiện thao tác này"* instead of unhandled exceptions or white-screen crashes).
 2. **Frontend UI/UX Bugs**: Unresponsive buttons (`onClick` swallowed), missing drawer state reset, z-index clipping, broken form validations, font floor violations (< 12px), missing `text-balance`.
 3. **Frontend-Backend Contract Binding**: Align form payload keys with backend DTOs, fix incorrect URL query parameters, add missing loading/error states.
+
+---
+
+## 7. MANDATORY REPORT-ONLY INCIDENT PROTOCOL (ROOT CAUSE ESCALATION)
+Whenever an issue is encountered that CANNOT or MUST NOT be fixed in-place (due to DB invariants, missing migrations, RBAC security policy, or 3rd-party dependencies):
+- **NEVER FAIL SILENTLY**: Agents are strictly forbidden from ignoring, suppressing, or bypassing the failure.
+- **MANDATORY INCIDENT DOSSIER**: Emit an explicit root-cause report containing:
+  1. **Route & Endpoint**: The exact frontend URL and backend endpoint path with HTTP status code.
+  2. **Root Cause Diagnosis**: The exact technical failure (e.g. Prisma P2022 column missing, pending migration, RBAC guard mismatch).
+  3. **Non-Fix Rationale**: Explanation of the architectural invariant preventing automated fix (e.g. *Zero-DB-Tampering standard forbids automated schema migration*).
+  4. **Remediation Plan for Human Lead / DBA**: Exact SQL or CLI commands required to resolve the issue safely.
