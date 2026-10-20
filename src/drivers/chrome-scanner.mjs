@@ -1,81 +1,90 @@
-import http from 'node:http';
+import { runChromeFlows } from './chrome-flow-runner.mjs';
 
 /**
  * Universal Chrome DevTools & Web Scanner Driver
- * Scans declared frontend routes for HTTP health, console zero-tolerance, and DOM integrity.
+ * Scans declared frontend routes and executes interactive user action flows.
  */
 export async function runChromeScanner(config) {
-  if (!config.browser.enabled || config.browser.routes.length === 0) {
-    return { skipped: true, reason: 'Browser scanning is disabled or has no routes configured.' };
+  const hasRoutes = config.browser.routes && config.browser.routes.length > 0;
+  const hasFlows = config.browser.flows && config.browser.flows.length > 0;
+
+  if (!config.browser.enabled || (!hasRoutes && !hasFlows)) {
+    return { skipped: true, reason: 'Browser scanning is disabled or has no routes/flows configured.' };
   }
 
   const results = [];
-  console.log(`\n[Chrome Scanner] Scanning ${config.browser.routes.length} declared route(s)...`);
-
   const baseUrl = config.baseUrl;
 
-  for (const routeItem of config.browser.routes) {
-    const routePath = typeof routeItem === 'string' ? routeItem : routeItem.path;
-    const expectedSelector = typeof routeItem === 'object' ? routeItem.waitForSelector : null;
-    const fullUrl = `${baseUrl}${routePath}`;
-    const startedAt = Date.now();
+  // 1. Quét các route cơ bản
+  if (hasRoutes) {
+    console.log(`\n[Chrome Scanner] Quét ${config.browser.routes.length} route tĩnh & kiểm tra lỗi HTTP...`);
+    for (const routeItem of config.browser.routes) {
+      const routePath = typeof routeItem === 'string' ? routeItem : routeItem.path;
+      const fullUrl = `${baseUrl}${routePath}`;
+      const startedAt = Date.now();
 
-    console.log(`  -> Probing route: ${fullUrl}`);
+      console.log(`  -> Thăm dò route: ${fullUrl}`);
 
-    try {
-      const res = await fetch(fullUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AgentHarness/1.0',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+      try {
+        const res = await fetch(fullUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 AgentHarness/1.0',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+          }
+        });
+
+        const durationMs = Date.now() - startedAt;
+        if (!res.ok) {
+          throw new Error(`Route trả về HTTP status ${res.status} ${res.statusText}`);
         }
-      });
 
-      const durationMs = Date.now() - startedAt;
+        const html = await res.text();
+        const fatalPatterns = [
+          'Application error: a client-side exception has occurred',
+          'Internal Server Error',
+          'SyntaxError:',
+          'Unhandled Runtime Error'
+        ];
 
-      if (!res.ok) {
-        throw new Error(`Route returned HTTP status ${res.status} ${res.statusText}`);
-      }
-
-      const html = await res.text();
-
-      // Check for common fatal runtime phrases in HTML
-      const fatalPatterns = [
-        'Application error: a client-side exception has occurred',
-        'Internal Server Error',
-        'SyntaxError:',
-        'Unhandled Runtime Error'
-      ];
-
-      for (const pattern of fatalPatterns) {
-        if (html.includes(pattern)) {
-          throw new Error(`Fatal browser error pattern detected in rendered markup: "${pattern}"`);
+        for (const pattern of fatalPatterns) {
+          if (html.includes(pattern)) {
+            throw new Error(`Phát hiện lỗi vỡ giao diện nghiêm trọng: "${pattern}"`);
+          }
         }
-      }
 
-      // Check selector presence if configured
-      if (expectedSelector && expectedSelector.startsWith('[data-testid=')) {
-        const testId = expectedSelector.replace(/\[data-testid=['"](.*?)['"]\]/, '$1');
-        if (!html.includes(`data-testid="${testId}"`) && !html.includes(`data-testid='${testId}'`)) {
-          console.warn(`    WARNING: data-testid="${testId}" was not found in initial static HTML (may render via client hydration).`);
-        }
+        results.push({
+          route: routePath,
+          passed: true,
+          httpStatus: res.status,
+          durationMs
+        });
+        console.log(`    PASS (${durationMs}ms): HTTP ${res.status}`);
+      } catch (err) {
+        const durationMs = Date.now() - startedAt;
+        results.push({
+          route: routePath,
+          passed: false,
+          durationMs,
+          error: err.message
+        });
+        console.error(`    FAIL (${durationMs}ms): ${err.message}`);
       }
+    }
+  }
 
-      results.push({
-        route: routePath,
-        passed: true,
-        httpStatus: res.status,
-        durationMs
-      });
-      console.log(`    PASS (${durationMs}ms): HTTP ${res.status}`);
-    } catch (err) {
-      const durationMs = Date.now() - startedAt;
-      results.push({
-        route: routePath,
-        passed: false,
-        durationMs,
-        error: err.message
-      });
-      console.error(`    FAIL (${durationMs}ms): ${err.message}`);
+  // 2. Chạy các kịch bản tương tác flows (nếu có)
+  let flowSummary = null;
+  if (hasFlows) {
+    flowSummary = await runChromeFlows(config);
+    if (flowSummary.results) {
+      for (const fr of flowSummary.results) {
+        results.push({
+          flow: fr.flow,
+          passed: fr.passed,
+          durationMs: fr.durationMs,
+          error: fr.error
+        });
+      }
     }
   }
 
@@ -83,6 +92,6 @@ export async function runChromeScanner(config) {
   return {
     passed: allPassed,
     results,
-    summary: `${results.filter(r => r.passed).length}/${results.length} routes healthy`
+    summary: `${results.filter(r => r.passed).length}/${results.length} bài kiểm tra trình duyệt đạt chuẩn`
   };
 }

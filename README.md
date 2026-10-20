@@ -17,6 +17,26 @@ Khi các lập trình viên hoặc AI Agents (Antigravity, Codex, Orca) phát tr
 
 ---
 
+## 💡 Nguyên Tắc Bất Biến: "Thêm Tính Năng Mới = Bổ Sung Ngay Kịch Bản Harness"
+
+Để dự án luôn luôn trơn tru và **không bao giờ bị quên test khi dự án phình to**:
+> **Bất kỳ khi nào bạn hoặc AI Agent phát triển xong một tính năng mới (dù là UI, Socket hay API duyệt đơn), BẮT BUỘC phải ghi nhận ngay kịch bản kiểm thử vào `harness.config.json`!**
+
+Harness cung cấp sẵn lệnh thêm nhanh một chạm:
+```bash
+# 1. Thêm kịch bản kiểm tra giao diện / luồng thao tác người dùng (UI Flow)
+agent-harness add:flow "quan-ly-dat-phong"
+
+# 2. Thêm kịch bản kiểm tra realtime socket cho tính năng mới
+agent-harness add:socket "thong-bao-nhan-phong"
+
+# 3. Thêm kịch bản kiểm tra chống duyệt trùng / tranh chấp (Race condition)
+agent-harness add:concurrency "duyet-hoan-tien"
+```
+Các kịch bản này sẽ trở thành **Tài sản kiểm thử vĩnh viễn (Living Harness Specs)**. Các lần code sau, Agent chỉ cần chạy `agent-harness run` là kiểm tra lại toàn bộ từ tính năng cũ đến mới, đảm bảo 0% lỗi hồi quy (zero regression).
+
+---
+
 ## 🏗️ Kiến trúc Kiểm thử Đa Tầng (4-Tier Test Architecture)
 
 ```mermaid
@@ -30,7 +50,7 @@ flowchart TD
         
         T0 --> T2["Tier 2: Concurrency & State Invariant Gate<br/>• Bắn request song song với tần suất cao (Burst)<br/>• Chống duyệt trùng (Đúng 1 thành công 200, N-1 bị chặn 409)<br/>• Bảo vệ tính toàn vẹn State Machine"]
 
-        T0 --> T3["Tier 3: Browser & Route Health<br/>• Quét sạch lỗi Console (Zero-Tolerance)<br/>• Bắt toàn bộ lỗi ngầm Network 4xx/5xx<br/>• Kiểm tra hiển thị DOM selector"]
+        T0 --> T3["Tier 3: Browser & Route Health<br/>• Quét sạch lỗi Console (Zero-Tolerance)<br/>• Bắt toàn bộ lỗi ngầm Network 4xx/5xx<br/>• Thực thi kịch bản tương tác người dùng (UI Flows)"]
     end
 
     T1 --> Convergence["Bộ Tổng Hợp & Đánh Giá"]
@@ -118,6 +138,16 @@ Chỉnh sửa file cấu hình phù hợp với dự án của bạn:
     "routes": [
       { "path": "/dashboard", "waitForSelector": "[data-testid='metrics-board']" },
       { "path": "/orders", "waitForSelector": "table" }
+    ],
+    "flows": [
+      {
+        "name": "luong-dang-nhap-va-xem-bao-cao",
+        "steps": [
+          { "action": "navigate", "url": "/login" },
+          { "action": "waitFor", "durationMs": 300 },
+          { "action": "assertNoErrors" }
+        ]
+      }
     ]
   }
 }

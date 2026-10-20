@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { executeHarness } from '../src/index.mjs';
+import { appendScenario } from '../src/core/scenario-builder.mjs';
 
 const args = process.argv.slice(2);
 const command = args[0] || 'run';
@@ -17,6 +18,9 @@ Cách dùng:
 Các lệnh khả dụng:
   run                  Chạy toàn bộ quy trình kiểm thử (mặc định)
   init                 Khởi tạo file cấu hình mẫu harness.config.json tại thư mục hiện tại
+  add:flow <tên>       Thêm nhanh một kịch bản UI Flow mới khi vừa phát triển tính năng
+  add:socket <tên>     Thêm nhanh một kịch bản kiểm tra Realtime Socket mới
+  add:concurrency <tên>Thêm nhanh một kịch bản kiểm tra Duyệt tranh chấp (Concurrency)
   probe:socket         Chỉ chạy Tier 1 (Kiểm tra kết nối Realtime Socket)
   probe:concurrency    Chỉ chạy Tier 2 (Kiểm tra tranh chấp Concurrency & Idempotency)
   probe:browser        Chỉ chạy Tier 3 (Kiểm tra Route trình duyệt & Lỗi Console)
@@ -53,6 +57,56 @@ async function handleInit() {
   console.log(` Khởi tạo thành công harness.config.json tại: ${target}`);
 }
 
+async function handleAdd(type, name) {
+  if (!name) {
+    console.error(` Vui lòng cung cấp tên kịch bản. Ví dụ: agent-harness add:${type} "ten-tinh-nang"`);
+    process.exit(1);
+  }
+
+  let payload;
+  if (type === 'flow') {
+    payload = {
+      name,
+      description: `Kịch bản kiểm thử giao diện cho tính năng ${name}`,
+      steps: [
+        { action: "navigate", url: `/${name}` },
+        { action: "waitFor", durationMs: 500 },
+        { action: "assertNoErrors" }
+      ]
+    };
+  } else if (type === 'socket') {
+    payload = {
+      name,
+      description: `Kịch bản realtime socket cho tính năng ${name}`,
+      receiver: {
+        endpoint: "/events",
+        listenEvent: `${name.toUpperCase()}_EVENT`
+      },
+      trigger: {
+        type: "http",
+        method: "POST",
+        path: `/api/v1/${name}`,
+        body: { example: true }
+      },
+      timeoutMs: 3000
+    };
+  } else if (type === 'concurrency') {
+    payload = {
+      name,
+      description: `Kịch bản chống duyệt đúp / tranh chấp cho ${name}`,
+      path: `/api/v1/${name}/approve`,
+      method: "POST",
+      concurrentBurst: 5,
+      assert: {
+        expected200: 1,
+        expectedConflictOrBad: 4
+      }
+    };
+  }
+
+  appendScenario(process.cwd(), type, payload);
+}
+
 async function main() {
   if (args.includes('--help') || args.includes('-h') || command === 'help') {
     printHelp();
@@ -61,6 +115,13 @@ async function main() {
 
   if (command === 'init') {
     await handleInit();
+    process.exit(0);
+  }
+
+  if (command.startsWith('add:')) {
+    const type = command.replace('add:', '');
+    const name = args[1];
+    await handleAdd(type, name);
     process.exit(0);
   }
 
