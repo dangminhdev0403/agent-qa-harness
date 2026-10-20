@@ -11,28 +11,18 @@
 
 ## 📑 Mục Lục
 1. [Tại sao cần Agent QA Harness?](#-tại-sao-cần-agent-qa-harness)
-2. [Nguyên Tắc Bất Biến: Living Harness Contract](#-nguyên-tắc-bất-biến-thêm-tính-năng-mới--bổ-sung-ngay-kịch-bản-harness)
-3. [Kiến Trúc Kiểm Thử 4 Tầng](#-kiến-trúc-kiểm-thử-đa-tầng-4-tier-test-architecture)
-4. [Bắt Đầu Nhanh (Quickstart 60 Giây)](#-bắt-đầu-nhanh-áp-dụng-cho-mọi-repo-trong-60-giây)
-5. [Tích Hợp Archon Workflow DAG](#-tích-hợp-archon-workflow-dag)
-6. [Cơ Chế Tự Phục Hồi (Self-Healing Loop)](#-cơ-chế-tự-phục-hồi-self-healing-incident-pack)
-7. [Bảng Tra Cứu Lệnh CLI Toàn Cục](#-bảng-tra-cứu-lệnh-cli-toàn-cục)
-8. [Tài Liệu Chi Tiết](#-tài-liệu-chi-tiết)
+2. [2 Chế Độ Kiểm Thử Riêng Biệt & Cơ Chế Khử Mơ Hồ](#-2-chế-độ-kiểm-thử-riêng-biệt)
+3. [4 Tấm Khiên Bảo Vệ Đột Phá (Bulletproof Protections)](#-4-tấm-khiên-bảo-vệ-đột-phá-bulletproof)
+4. [Nguyên Tắc Bất Biến: Living Harness Contract](#-nguyên-tắc-bất-biến-living-harness-contract)
+5. [Kiến Trúc Kiểm Thử 4 Tầng](#-kiến-trúc-kiểm-thử-đa-tầng-4-tier-test-architecture)
+6. [Bắt Đầu Nhanh (Quickstart 60 Giây)](#-bắt-đầu-nhanh-áp-dụng-cho-mọi-repo-trong-60-giây)
+7. [Tích Hợp Archon Workflow DAG](#-tích-hợp-archon-workflow-dag)
+8. [Bảng Tra Cứu Lệnh CLI Toàn Cục](#-bảng-tra-cứu-lệnh-cli-toàn-cục)
+9. [Tài Liệu Chi Tiết](#-tài-liệu-chi-tiết)
 
 ---
 
-## 🎯 2 Chế Độ Kiểm Thử Riêng Biệt
-
-Harness phân định rạch ròi thành 2 chế độ độc lập để phục vụ đúng ngữ cảnh phát triển:
-
-| Chế độ | Lệnh CLI | Nội dung & Phạm vi kiểm tra |
-| :--- | :--- | :--- |
-| **Chế độ 1: Test Code & Ổn Định Hệ Thống** | `agent-harness test:code` | • Kiểm tra TypeScript (`tsc`), Build/Bundle, UI Design Rules (font floor, balance).<br>• Kiểm tra Zod schema & API contract.<br>• Kiểm tra kết nối Realtime Socket (Handshake, Rooms).<br>• Kiểm tra Concurrency & State Invariants (Chống duyệt trùng / Race condition). |
-| **Chế độ 2: Test Flow Luồng & Giao Diện với Chrome** | `agent-harness test:flow` | • Mở trình duyệt tương tác trực tiếp bằng **Chrome DevTools MCP**.<br>• Thực thi các chuỗi hành động mô phỏng người dùng (`navigate`, `fill`, `click`, `waitFor`, `assertText`).<br>• Giám sát ngầm nghiêm ngặt: **0 lỗi Console** đỏ và **0 lỗi Network 4xx/5xx**.<br>• Chụp ảnh màn hình lưu bằng chứng tại `harness-out/screenshots/`. |
-| **Chạy Toàn Diện Cả Hai (Dual-Pass)** | `agent-harness run` | Chạy tuần tự và toàn diện cả Chế độ 1 và Chế độ 2. |
-
-> **🔔 Cơ Chế Khử Mơ Hồ (Prompt Disambiguation):**  
-> Khi bạn nhập prompt ngắn gọn hoặc chưa rõ ràng (ví dụ: *"test dự án giúp tôi"*, *"soát lỗi giùm"*, *"kiểm tra chức năng"*), Agent sẽ **tự động hiển thị bảng lựa chọn (Interactive Options)** để bạn bấm chọn ngay Mode 1, Mode 2 hoặc cả hai mà không cần giải thích dài dòng.
+## 🎯 Tại sao bạn cần Agent QA Harness?
 
 Khi các lập trình viên hoặc AI Agents (Antigravity, Codex, Orca) phát triển tính năng, các bài unit test thông thường thường bỏ sót các lỗi tích hợp thực tế:
 1. **Socket không ăn**: Client không nhận được event realtime do sai tên phòng (`room`), sai namespace, token JWT handshake hết hạn hoặc Redis Pub/Sub bị nghẽn.
@@ -44,20 +34,56 @@ Khi các lập trình viên hoặc AI Agents (Antigravity, Codex, Orca) phát tr
 
 ---
 
-## 💡 Nguyên Tắc Bất Biến: "Thêm Tính Năng Mới = Bổ Sung Ngay Kịch Bản Harness"
+## 🚦 2 Chế Độ Kiểm Thử Riêng Biệt
+
+Harness phân định rạch ròi thành 2 chế độ độc lập để phục vụ đúng ngữ cảnh phát triển:
+
+| Chế độ | Lệnh CLI | Nội dung & Phạm vi kiểm tra |
+| :--- | :--- | :--- |
+| **Chế độ 1: Test Code & Ổn Định Hệ Thống** | `agent-harness test:code` | • Kiểm tra TypeScript (`tsc`), Build/Bundle, UI Design Rules (font floor, balance).<br>• Kiểm tra Zod schema & API contract.<br>• Kiểm tra kết nối Realtime Socket (Handshake, Rooms).<br>• Kiểm tra Concurrency & State Invariants (Chống duyệt trùng / Race condition). |
+| **Chế độ 2: Test Flow Luồng & Giao Diện với Chrome** | `agent-harness test:flow` | • Mở trình duyệt tương tác trực tiếp bằng **Chrome DevTools MCP**.<br>• Thực thi các chuỗi hành động mô phỏng người dùng (`navigate`, `fill`, `click`, `waitFor`, `assertText`).<br>• Giám sát ngầm nghiêm ngặt: **0 lỗi Console** đỏ và **0 lỗi Network 4xx/5xx**.<br>• Chụp ảnh màn hình lưu bằng chứng tại `harness-out/screenshots/`. |
+| **Chạy Toàn Diện Cả Hai (Dual-Pass)** | `agent-harness run` | Chạy tuần tự và toàn diện cả Chế độ 1 và Chế độ 2. |
+
+> **🔔 Cơ Chế Khử Mơ Hồ (Prompt Disambiguation):**  
+> Khi bạn nhập prompt ngắn gọn hoặc chưa rõ ràng (ví dụ: *"test dự án giúp tôi"*, *"soát lỗi giùm"*, *"kiểm tra chức năng"*), Agent sẽ **tự động hiển thị bảng lựa chọn (Interactive Options qua `ask_question`)** để bạn bấm chọn ngay Mode 1, Mode 2 hoặc cả hai mà không cần giải thích dài dòng.
+
+---
+
+## 🛡️ 4 Tấm Khiên Bảo Vệ Đột Phá (Bulletproof)
+
+1. **Khởi Động Máy Chủ An Toàn (`--auto-start`)**:
+   - Nếu máy chủ chưa chạy, Harness tự động bật server ngầm.
+   - **QUY TẮC BẤT DI BẤT DỊCH: CHỈ CHẠY `START` (`npm run start` / `pnpm start`), TUYỆT ĐỐI CẤM CHẠY `DEV`**.
+   - Tránh việc Hot-Module Replacement (HMR) và file watcher gây xung đột dữ liệu khi bạn đang vừa test vừa sửa code.
+   - Test xong tự động kill tiến trình giải phóng cổng (hoặc giữ lại với `--no-kill`).
+
+2. **Động Hóa Biến Mẫu (`{{timestamp}}`, `{{uuid}}`)**:
+   - Tự động thay thế biến động trong URL, Headers và Body (ví dụ: `/orders/ORD-{{timestamp}}/approve`).
+   - Xóa bỏ triệt để bẫy rác database, cho phép chạy test 1.000 lần liên tục mà không lo trùng lặp ID hay đụng đơn đã duyệt.
+
+3. **Cấp Token JWT Tươi Mới Tự Động (`authProvider`)**:
+   - Khai báo endpoint đăng nhập một lần, Harness tự động login trước phiên test và trích xuất JWT mới.
+   - Bơm thẳng vào WebSocket handshake và HTTP headers, không bao giờ lo token cũ hết hạn gây lỗi 401 giả.
+
+4. **Cô Lập Nhánh & Ngắt Vòng Lặp Vô Tận (`isolation-manager.mjs`)**:
+   - **Anti-Infinite-Loop Circuit Breaker**: Giới hạn tối đa 3 lần sửa code tự động. Nếu quá 3 lần lỗi vẫn lặp lại $\rightarrow$ Tự động ngắt mạch (Exit Code 2), ngăn chặn 2 agents cuốn vào vòng lặp sửa-test-sửa vô tận.
+   - **Branch Isolator (`--isolate-branch`)**: Tự động chuyển sang nhánh cô lập `git checkout -b harness-fix/...` khi sửa lỗi, giữ nguyên vẹn nhánh chính và không đè code của task khác.
+   - **Concurrency Lock (`.harness.lock`)**: Khóa file chống va chạm khi nhiều Agent cùng truy cập một codebase.
+
+---
+
+## 💡 Nguyên Tắc Bất Biến: Living Harness Contract
 
 Để dự án luôn luôn trơn tru và **không bao giờ bị quên test khi dự án phình to**:
 > **Bất kỳ khi nào bạn hoặc AI Agent phát triển xong một tính năng mới (dù là UI, Socket hay API duyệt đơn), BẮT BUỘC phải ghi nhận ngay kịch bản kiểm thử vào `harness.config.json`!**
 
 ### 1. Tự Động Quét & Khởi Tạo Dự Án Mới (Zero-Effort Auto-Discover)
-Khi bạn bắt đầu ở bất kỳ repository nào, **không cần phải gõ tay cấu hình từng trang hay từng socket**, chỉ cần chạy:
 ```bash
 agent-harness discover
 ```
 Lệnh này sẽ **tự động quét toàn bộ mã nguồn** (Next.js routes, NestJS `@WebSocketGateway`, `@SubscribeMessage`, và các endpoint Mutation nhạy cảm như `/approve`, `/checkout`, `/pay`) để tự động sinh ra kịch bản ban đầu đầy đủ!
 
 ### 2. Thêm Nhanh & Tự Động Nâng Cấp (Smart Upgrade & Deduplication)
-Khi phát triển hoặc sửa đổi tính năng:
 ```bash
 # Thêm/Nâng cấp kịch bản kiểm tra giao diện / luồng thao tác người dùng (UI Flow)
 agent-harness add:flow "quan-ly-dat-phong"
@@ -117,6 +143,18 @@ agent-harness discover
   "baseUrl": "http://localhost:3000",
   "timeoutMs": 30000,
 
+  "server": {
+    "autoStart": false,
+    "startCommand": "npm run start"
+  },
+
+  "authProvider": {
+    "enabled": false,
+    "endpoint": "/api/v1/auth/login",
+    "credentials": { "email": "admin@vietsage.vn", "password": "{{env:ADMIN_PASS}}" },
+    "tokenPath": "data.accessToken"
+  },
+
   "static": {
     "enabled": true,
     "commands": [
@@ -132,7 +170,6 @@ agent-harness discover
         "name": "kich-ban-khach-yeu-cau-le-tan-nhan",
         "receiver": {
           "endpoint": "/hotel-ops",
-          "auth": { "token": "Bearer test-jwt-token" },
           "listenEvent": "REQUEST_CREATED"
         },
         "trigger": {
@@ -151,7 +188,7 @@ agent-harness discover
     "scenarios": [
       {
         "name": "chong-duyet-trung-don-hang",
-        "path": "/api/v1/orders/ORD-001/approve",
+        "path": "/api/v1/orders/ORD-{{timestamp}}/approve",
         "method": "POST",
         "concurrentBurst": 5,
         "assert": { "expected200": 1, "expectedConflictOrBad": 4 }
@@ -182,13 +219,14 @@ agent-harness discover
 
 ### 3. Thực thi kiểm thử
 ```bash
-# Chạy toàn bộ 4 Tier kiểm thử
-agent-harness run
+# Chạy Chế độ 1: Test Code & Độ Ổn Định
+agent-harness test:code
 
-# Hoặc chỉ chạy riêng từng phần khi đang code tính năng:
-agent-harness probe:socket         # Chỉ test Realtime Socket
-agent-harness probe:concurrency    # Chỉ test Duyệt trùng & Tranh chấp
-agent-harness probe:browser        # Chỉ quét Route & Lỗi giao diện
+# Chạy Chế độ 2: Test User Flow với Chrome DevTools MCP
+agent-harness test:flow
+
+# Chạy toàn diện cả hai kèm tự khởi động server start (nếu chưa bật)
+agent-harness run --auto-start --isolate-branch
 ```
 
 ---
@@ -202,42 +240,17 @@ archon run .archon/workflows/universal-qa-harness.yaml
 
 ---
 
-## 🛡️ Cơ chế Tự Phục Hồi (Self-Healing Incident Pack)
-
-Khi phát hiện lỗi ở bất kỳ tầng nào, Harness không chỉ báo `FAILED` vô nghĩa, mà tự động ghi nhận đầy đủ chứng cứ vào file **`harness-out/INCIDENT_PACK.json`**:
-
-```json
-{
-  "status": "FAILED",
-  "project": "vietsage",
-  "failedModules": ["realtime"],
-  "failures": [
-    {
-      "tier": "realtime",
-      "target": "kich-ban-khach-yeu-cau-le-tan-nhan",
-      "error": "Socket timeout after 3000ms. Event 'REQUEST_CREATED' was never received at endpoint 'http://localhost:3000/hotel-ops'."
-    }
-  ],
-  "instructionsForAgent": [
-    "Đọc file INCIDENT_PACK.json để xác định chính xác tầng và kịch bản gặp lỗi.",
-    "Kiểm tra Gateway Socket tương ứng (tên phòng room, token handshake, payload).",
-    "Áp dụng bản sửa đổi tối thiểu và không sửa các file ngoài phạm vi.",
-    "Chạy lại: agent-harness probe:socket để xác nhận lỗi đã được khắc phục triệt để."
-  ]
-}
-```
-
----
-
 ## 📋 Bảng Tra Cứu Lệnh CLI Toàn Cục
 
 | Lệnh | Ý nghĩa & Mô tả |
 | :--- | :--- |
-| `agent-harness discover` | Tự động quét dự án, phát hiện routes, socket gateways, mutations và tạo config |
-| `agent-harness run` | Chạy toàn bộ quy trình kiểm thử 4 tầng và xuất báo cáo |
-| `agent-harness run --auto-start` | Tự động khởi động máy chủ bằng lệnh `START` (npm run start) nếu chưa chạy (TUYỆT ĐỐI KHÔNG CHẠY `DEV`) |
+| `agent-harness test:code` | **[Chế độ 1]** Test Code, Types, Build, Static Rules, Realtime Socket & Concurrency |
+| `agent-harness test:flow` | **[Chế độ 2]** Test Flow luồng người dùng & Giao diện thực tế bằng Chrome DevTools MCP |
+| `agent-harness run` | Chạy toàn diện cả 2 chế độ (Dual-pass) |
+| `agent-harness run --auto-start` | Tự động khởi động máy chủ bằng lệnh `START` nếu chưa chạy (TUYỆT ĐỐI CẤM CHẠY `DEV`) |
 | `agent-harness run --isolate-branch` | Tự động tách nhánh Git cô lập (`harness-fix/...`) khi phát hiện lỗi để tránh xung đột giữa 2 agents |
 | `agent-harness run --max-retries <n>` | Giới hạn số lần thử sửa code tự động (Mặc định: 3, ngắt mạch chống vòng lặp vô tận) |
+| `agent-harness discover` | Tự động quét dự án, phát hiện routes, socket gateways, mutations và tạo config |
 | `agent-harness init` | Khởi tạo file cấu hình trắng `harness.config.json` |
 | `agent-harness add:flow <tên>` | Thêm hoặc nâng cấp kịch bản tương tác người dùng (UI Flow) |
 | `agent-harness add:socket <tên>` | Thêm hoặc nâng cấp kịch bản kiểm tra Realtime Socket |
@@ -246,15 +259,14 @@ Khi phát hiện lỗi ở bất kỳ tầng nào, Harness không chỉ báo `FA
 | `agent-harness probe:concurrency` | Chạy riêng rẽ Tier 2 (Concurrency Gate) |
 | `agent-harness probe:browser` | Chạy riêng rẽ Tier 3 (Chrome & Route Scanner) |
 | `agent-harness --tier <0\|1\|2\|3>` | Chạy một Tier cụ thể được chỉ định |
-| `agent-harness --config <path>` | Chỉ định file cấu hình tùy chỉnh ở đường dẫn khác |
 
 ---
 
 ## 📚 Tài Liệu Chi Tiết
 
-- 📐 [**Kiến Trúc Toàn Diện Hệ Thống (ARCHITECTURE.md)**](docs/ARCHITECTURE.md): Phân tích chi tiết thuật toán 4 tầng kiểm thử, cơ chế đo độ trễ socket và burst concurrency.
-- ⚙️ [**Đặc Tả File Cấu Hình (CONFIG_SPEC.md)**](docs/CONFIG_SPEC.md): Bảng tra cứu toàn bộ tham số trong `harness.config.json`.
-- 🤖 [**Sổ Tay Hành Động Độc Lập Cho AI Agents (AGENT_PLAYBOOK.md)**](docs/AGENT_PLAYBOOK.md): Cẩm nang tự sửa lỗi và tương tác Chrome DevTools MCP dành cho Agent.
+- 📐 [**Kiến Trúc Toàn Diện Hệ Thống (ARCHITECTURE.md)**](docs/ARCHITECTURE.md): Phân tích chi tiết thuật toán 4 tầng kiểm thử, cơ chế đo độ trễ socket, burst concurrency và circuit breaker.
+- ⚙️ [**Đặc Tả File Cấu Hình (CONFIG_SPEC.md)**](docs/CONFIG_SPEC.md): Bảng tra cứu toàn bộ tham số trong `harness.config.json` (server, preflight, authProvider, flows...).
+- 🤖 [**Sổ Tay Hành Động Độc Lập Cho AI Agents (AGENT_PLAYBOOK.md)**](docs/AGENT_PLAYBOOK.md): Cẩm nang tự sửa lỗi, tự tách nhánh cô lập và tương tác Chrome DevTools MCP dành cho Agent.
 - 📜 [**Quy Tắc Bắt Buộc Toàn Cục (AGENT_HARNESS_GLOBAL_RULE.md)**](rules/AGENT_HARNESS_GLOBAL_RULE.md): Khối quy tắc copy-paste dành cho `.agents/AGENTS.md`.
 
 ---
