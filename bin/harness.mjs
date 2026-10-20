@@ -9,29 +9,29 @@ const command = args[0] || 'run';
 
 function printHelp() {
   console.log(`
-Agent QA Harness - Universal Testing Engine for AI Agents & Archon
+Agent QA Harness - Bộ khung kiểm thử tự động đa tầng cho AI Agents & Archon
 
-Usage:
-  agent-harness [command] [options]
+Cách dùng:
+  agent-harness [lệnh] [tùy chọn]
 
-Commands:
-  run                  Run the configured testing harness (default)
-  init                 Create a starter harness.config.json in the current directory
-  probe:socket         Execute only Tier 1 (Realtime Socket Probe)
-  probe:concurrency    Execute only Tier 2 (Concurrency & Idempotency Gate)
-  probe:browser        Execute only Tier 3 (Chrome & Route Health)
+Các lệnh khả dụng:
+  run                  Chạy toàn bộ quy trình kiểm thử (mặc định)
+  init                 Khởi tạo file cấu hình mẫu harness.config.json tại thư mục hiện tại
+  probe:socket         Chỉ chạy Tier 1 (Kiểm tra kết nối Realtime Socket)
+  probe:concurrency    Chỉ chạy Tier 2 (Kiểm tra tranh chấp Concurrency & Idempotency)
+  probe:browser        Chỉ chạy Tier 3 (Kiểm tra Route trình duyệt & Lỗi Console)
 
-Options:
-  --config <path>      Path to custom harness.config.json
-  --tier <0|1|2|3>     Execute a single specific tier
-  --help, -h           Show this help message
+Tùy chọn:
+  --config <đường_dẫn> Chỉ định file cấu hình harness.config.json tùy chỉnh
+  --tier <0|1|2|3>     Chỉ chạy một Tier cụ thể
+  --help, -h           Hiển thị trợ giúp này
 `);
 }
 
 async function handleInit() {
   const target = path.resolve(process.cwd(), 'harness.config.json');
   if (fs.existsSync(target)) {
-    console.error(` Error: harness.config.json already exists in ${process.cwd()}`);
+    console.error(` Lỗi: harness.config.json đã tồn tại trong thư mục: ${process.cwd()}`);
     process.exit(1);
   }
 
@@ -50,7 +50,7 @@ async function handleInit() {
     fs.writeFileSync(target, JSON.stringify(fallback, null, 2), 'utf8');
   }
 
-  console.log(` Initialized harness.config.json successfully at: ${target}`);
+  console.log(` Khởi tạo thành công harness.config.json tại: ${target}`);
 }
 
 async function main() {
@@ -91,7 +91,7 @@ async function main() {
 
     process.exit(overallPassed ? 0 : 1);
   } catch (err) {
-    console.error(`\n[FATAL] Harness execution failed: ${err.message}`);
+    console.error(`\n[LỖI NGHIÊM TRỌNG] Quá trình kiểm thử thất bại: ${err.message}`);
     process.exit(1);
   }
 }

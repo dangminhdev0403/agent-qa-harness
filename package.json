@@ -1,7 +1,7 @@
 {
-  "name": "agents-testing-with-workflow",
+  "name": "agent-qa-harness",
   "version": "1.0.0",
-  "description": "Universal 4-Tier Autonomous QA & E2E Testing Harness for AI Agents with Archon & Chrome DevTools",
+  "description": "Bộ khung kiểm thử tự động đa tầng (4-Tier Autonomous QA Harness) cho AI Agents & Archon Workflows",
   "main": "src/index.mjs",
   "type": "module",
   "bin": {
