@@ -16,9 +16,13 @@ Agent QA Harness - Bộ khung kiểm thử tự động đa tầng cho AI Agents
 Cách dùng:
   agent-harness [lệnh] [tùy chọn]
 
-Các lệnh tự động hóa:
+2 CHẾ ĐỘ KIỂM THỬ CHÍNH:
+  test:code            [CHẾ ĐỘ 1] Test Code & Độ Ổn Định Hệ Thống (Types, Build, UI Rules, Sockets, Concurrency)
+  test:flow            [CHẾ ĐỘ 2] Test Flow Luồng & Giao Diện Người Dùng (Chrome DevTools, UI Actions, 0-Console Error)
+  run                  Chạy toàn diện cả 2 chế độ (Dual-pass)
+
+CÁC LỆNH TỰ ĐỘNG HÓA & TIỆN ÍCH:
   discover             TỰ ĐỘNG quét dự án và tạo/đồng bộ kịch bản (Zero-effort setup)
-  run                  Chạy toàn bộ quy trình kiểm thử (mặc định)
   init                 Khởi tạo file cấu hình mẫu harness.config.json tại thư mục hiện tại
   add:flow <tên>       Thêm/Nâng cấp kịch bản UI Flow mới (Tự động lọc trùng)
   add:socket <tên>     Thêm/Nâng cấp kịch bản kiểm tra Realtime Socket
@@ -27,10 +31,11 @@ Các lệnh tự động hóa:
   probe:concurrency    Chỉ chạy Tier 2 (Kiểm tra tranh chấp Concurrency & Idempotency)
   probe:browser        Chỉ chạy Tier 3 (Kiểm tra Route trình duyệt & Lỗi Console)
 
-Tùy chọn:
-  --config <đường_dẫn> Chỉ định file cấu hình harness.config.json tùy chỉnh
-  --tier <0|1|2|3>     Chỉ chạy một Tier cụ thể
-  --help, -h           Hiển thị trợ giúp này
+TÙY CHỌN:
+  --mode <code|flow|all> Chọn chế độ thực thi (mặc định: all)
+  --config <đường_dẫn>   Chỉ định file cấu hình harness.config.json tùy chỉnh
+  --tier <0|1|2|3>       Chỉ chạy một Tier cụ thể
+  --help, -h             Hiển thị trợ giúp này
 `);
 }
 
@@ -106,7 +111,7 @@ async function handleAdd(type, name) {
       concurrentBurst: 5,
       assert: {
         "expected200": 1,
-        expectedConflictOrBad: 4
+        "expectedConflictOrBad": 4
       }
     };
   }
@@ -143,6 +148,19 @@ async function main() {
     configPath = args[configIdx + 1];
   }
 
+  // Xác định Mode kiểm thử
+  let mode = 'all';
+  if (command === 'test:code') {
+    mode = 'code';
+  } else if (command === 'test:flow') {
+    mode = 'flow';
+  } else {
+    const modeIdx = args.indexOf('--mode');
+    if (modeIdx !== -1 && args[modeIdx + 1]) {
+      mode = args[modeIdx + 1];
+    }
+  }
+
   let tier = null;
   const tierIdx = args.indexOf('--tier');
   if (tierIdx !== -1 && args[tierIdx + 1]) {
@@ -159,7 +177,8 @@ async function main() {
     const { overallPassed } = await executeHarness({
       cwd: process.cwd(),
       configPath,
-      tier
+      tier,
+      mode
     });
 
     process.exit(overallPassed ? 0 : 1);

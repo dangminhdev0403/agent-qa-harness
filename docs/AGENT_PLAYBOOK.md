@@ -11,6 +11,14 @@
 [ Nhận Yêu Cầu Task ]
          │
          ▼
+[ BƯỚC 0: Khử Mơ Hồ Bằng Option (NẾU PROMPT MƠ HỒ) ]
+• Nếu User ra lệnh chung chung ("test đi", "soát lỗi", "kiểm tra dự án"):
+  -> BẮT BUỘC dùng tool ask_question hiển thị Modal chọn Mode:
+     [1] Chế độ 1: Test Code & Độ Ổn Định (Types, Build, UI Rules, Sockets, Race condition)
+     [2] Chế độ 2: Test Flow Luồng & Giao Diện Thực Tế bằng Chrome MCP
+     [3] Chạy Toàn Diện cả 2 Chế Độ (Full Dual-Pass)
+         │
+         ▼
 [ BƯỚC 1: Khám Phá Dự Án (Preflight) ]
 • Dự án đã có harness.config.json chưa?
   -> CHƯA: Chạy `agent-harness discover` để tự động lập bản đồ kiểm thử.
@@ -29,8 +37,10 @@
   * Nếu thêm Duyệt đơn / Thanh toán: `agent-harness add:concurrency "<tên>"`
          │
          ▼
-[ BƯỚC 4: Chạy Kiểm Thử Toàn Diện ]
-• Chạy: `agent-harness run`
+[ BƯỚC 4: Chạy Kiểm Thử Theo Đúng Chế Độ ]
+• Nếu Mode 1: Chạy `agent-harness test:code`
+• Nếu Mode 2: Chạy `agent-harness test:flow` hoặc kích hoạt Chrome DevTools MCP
+• Nếu Mode All: Chạy `agent-harness run`
          │
    ┌─────┴─────┐
    ▼           ▼

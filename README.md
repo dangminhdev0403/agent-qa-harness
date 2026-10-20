@@ -21,7 +21,18 @@
 
 ---
 
-## 🎯 Tại sao bạn cần Agent QA Harness?
+## 🎯 2 Chế Độ Kiểm Thử Riêng Biệt
+
+Harness phân định rạch ròi thành 2 chế độ độc lập để phục vụ đúng ngữ cảnh phát triển:
+
+| Chế độ | Lệnh CLI | Nội dung & Phạm vi kiểm tra |
+| :--- | :--- | :--- |
+| **Chế độ 1: Test Code & Ổn Định Hệ Thống** | `agent-harness test:code` | • Kiểm tra TypeScript (`tsc`), Build/Bundle, UI Design Rules (font floor, balance).<br>• Kiểm tra Zod schema & API contract.<br>• Kiểm tra kết nối Realtime Socket (Handshake, Rooms).<br>• Kiểm tra Concurrency & State Invariants (Chống duyệt trùng / Race condition). |
+| **Chế độ 2: Test Flow Luồng & Giao Diện với Chrome** | `agent-harness test:flow` | • Mở trình duyệt tương tác trực tiếp bằng **Chrome DevTools MCP**.<br>• Thực thi các chuỗi hành động mô phỏng người dùng (`navigate`, `fill`, `click`, `waitFor`, `assertText`).<br>• Giám sát ngầm nghiêm ngặt: **0 lỗi Console** đỏ và **0 lỗi Network 4xx/5xx**.<br>• Chụp ảnh màn hình lưu bằng chứng tại `harness-out/screenshots/`. |
+| **Chạy Toàn Diện Cả Hai (Dual-Pass)** | `agent-harness run` | Chạy tuần tự và toàn diện cả Chế độ 1 và Chế độ 2. |
+
+> **🔔 Cơ Chế Khử Mơ Hồ (Prompt Disambiguation):**  
+> Khi bạn nhập prompt ngắn gọn hoặc chưa rõ ràng (ví dụ: *"test dự án giúp tôi"*, *"soát lỗi giùm"*, *"kiểm tra chức năng"*), Agent sẽ **tự động hiển thị bảng lựa chọn (Interactive Options)** để bạn bấm chọn ngay Mode 1, Mode 2 hoặc cả hai mà không cần giải thích dài dòng.
 
 Khi các lập trình viên hoặc AI Agents (Antigravity, Codex, Orca) phát triển tính năng, các bài unit test thông thường thường bỏ sót các lỗi tích hợp thực tế:
 1. **Socket không ăn**: Client không nhận được event realtime do sai tên phòng (`room`), sai namespace, token JWT handshake hết hạn hoặc Redis Pub/Sub bị nghẽn.
