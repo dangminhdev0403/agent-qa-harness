@@ -78,6 +78,74 @@ export function inspectPrerequisites(config) {
 }
 
 /**
+ * Inspects prerequisites scoped to a specific module
+ */
+export function inspectModulePrerequisites(config, moduleId, moduleDef) {
+  const missing = [];
+  const routes = moduleDef?.routes || [];
+
+  // Check auth requirement for this module
+  if (moduleDef?.requiresAuth) {
+    const role = moduleDef.authRole || moduleDef.authType;
+    const personaAuth = config.personas?.[moduleId]?.auth || config.personas?.[moduleId]?.credentials;
+    const globalAuth = config.authProvider?.enabled && config.authProvider?.credentials?.username;
+
+    if (!personaAuth && !globalAuth) {
+      missing.push({
+        type: 'MODULE_AUTH_MISSING',
+        title: `Thiếu Thông Tin Xác Thực cho Module [${moduleDef.name}]`,
+        description: `Module này yêu cầu quyền ${role}. Hiện chưa cấu hình tài khoản trong config.personas.${moduleId} hoặc config.authProvider.`,
+        actionRequired: `Thêm tài khoản cho persona '${moduleId}' hoặc cung cấp JWT hợp lệ.`
+      });
+    }
+  }
+
+  // Check dynamic fixtures for this module
+  const fixtures = config.fixtures || {};
+  const missingFixtures = [];
+  for (const r of routes) {
+    const pathStr = typeof r === 'string' ? r : (r.path || '');
+    const matches = pathStr.match(/\[([a-zA-Z0-9_]+)\]/g);
+    if (matches) {
+      for (const m of matches) {
+        const param = m.replace(/[\[\]]/g, '');
+        if (!fixtures[param] && !missingFixtures.includes(param)) {
+          missingFixtures.push(param);
+        }
+      }
+    }
+  }
+
+  if (missingFixtures.length > 0) {
+    missing.push({
+      type: 'MODULE_FIXTURES_MISSING',
+      title: `Thiếu Tham Số Động cho Module [${moduleDef.name}]`,
+      description: `Module có route chứa tham số (${missingFixtures.map(f => `[${f}]`).join(', ')}).`,
+      actionRequired: `Chạy 'agent-harness fixtures:mock' hoặc khai báo trong config.fixtures.`
+    });
+  }
+
+  return {
+    isComplete: missing.length === 0,
+    moduleId,
+    moduleName: moduleDef?.name || moduleId,
+    routesCount: routes.length,
+    missing
+  };
+}
+
+/**
+ * Standard default mock fixture values
+ */
+export const STANDARD_MOCK_FIXTURES = {
+  hotelId: "HCA_HOMESTAY",
+  qrCode: "DEMO_QR_ROOM_101",
+  orderId: "ORD_DEMO_2026",
+  invoiceId: "INV_DEMO_2026",
+  requestId: "REQ_DEMO_2026"
+};
+
+/**
  * Resolves a route URL by substituting dynamic fixture parameters (e.g. [hotelId] -> HCA_HOMESTAY)
  */
 export function resolveDynamicRoute(routePath, fixtures = {}) {

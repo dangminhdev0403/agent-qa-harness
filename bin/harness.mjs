@@ -9,7 +9,7 @@ import { IsolationManager } from '../src/core/isolation-manager.mjs';
 import { checkAndSyncProject } from '../src/core/smart-sync.mjs';
 import { SubagentDispatcher } from '../src/core/subagent-dispatcher.mjs';
 import { loadHarnessConfig } from '../src/core/config-loader.mjs';
-import { inspectPrerequisites } from '../src/core/prerequisite-inspector.mjs';
+import { inspectPrerequisites, inspectModulePrerequisites, STANDARD_MOCK_FIXTURES } from '../src/core/prerequisite-inspector.mjs';
 import { HARNESS_MODULES, partitionRoutesByModule } from '../src/core/module-registry.mjs';
 
 const args = process.argv.slice(2);
@@ -204,6 +204,26 @@ async function main() {
     process.exit(0);
   }
 
+  if (command === 'fixtures:mock') {
+    const configPath = path.resolve(process.cwd(), 'harness.config.json');
+    if (!fs.existsSync(configPath)) {
+      console.error(` Lỗi: Không tìm thấy harness.config.json trong ${process.cwd()}.`);
+      process.exit(1);
+    }
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    config.fixtures = {
+      ...(config.fixtures || {}),
+      ...STANDARD_MOCK_FIXTURES
+    };
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+    console.log(`\n======================================================`);
+    console.log(` TỰ ĐỘNG KHỞI TẠO BỘ THAM SỐ ĐỘNG MẪU (FIXTURES)`);
+    console.log(`======================================================`);
+    console.log(JSON.stringify(config.fixtures, null, 2));
+    console.log(`\n Đã cập nhật thành công vào harness.config.json.\n`);
+    process.exit(0);
+  }
+
   if (command === 'test:module') {
     const modId = args[1];
     if (!modId || !HARNESS_MODULES[modId]) {
@@ -215,10 +235,29 @@ async function main() {
 
     const config = loadHarnessConfig(process.cwd());
     const partitioned = partitionRoutesByModule(config.browser?.routes || []);
-    const targetRoutes = partitioned[modId]?.routes || [];
+    const modDef = partitioned[modId];
+    const targetRoutes = modDef?.routes || [];
+
+    // Kiểm tra điều kiện tiên quyết riêng cho module này (Anti-Superficiality Gate)
+    if (!args.includes('--force')) {
+      const modPrereq = inspectModulePrerequisites(config, modId, modDef);
+      if (!modPrereq.isComplete) {
+        console.warn(`\n======================================================`);
+        console.warn(` ⛔ DỪNG TIẾN TRÌNH: MODULE [${modDef.name.toUpperCase()}] THIẾU ĐIỀU KIỆN`);
+        console.warn(` (Nguyên tắc chống kiểm thử qua loa / Anti-Superficiality)`);
+        console.warn(`======================================================`);
+        for (const m of modPrereq.missing) {
+          console.warn(` • [${m.type}] ${m.title}`);
+          console.warn(`   -> ${m.description}`);
+          console.warn(`   -> Khắc phục: ${m.actionRequired}\n`);
+        }
+        console.warn(`Thêm cờ '--force' nếu muốn ép chạy bỏ qua xác thực.\n`);
+        process.exit(3);
+      }
+    }
 
     console.log(`\n======================================================`);
-    console.log(` KIỂM THỬ MODULE: ${HARNESS_MODULES[modId].name.toUpperCase()} (Vai trò: ${HARNESS_MODULES[modId].role})`);
+    console.log(` KIỂM THỬ MODULE: ${modDef.name.toUpperCase()} (Vai trò: ${modDef.role})`);
     console.log(` Số route trong module: ${targetRoutes.length}`);
     console.log(`======================================================\n`);
 
@@ -290,24 +329,34 @@ async function main() {
   const isolateBranch = args.includes('--isolate-branch');
   const force = args.includes('--force');
 
-  // Kiểm tra điều kiện tiên quyết (Anti-Superficiality Gate)
+  // Kiểm tra điều kiện tiên quyết (Anti-Superficiality Gate - Strict Halt)
   if ((mode === 'flow' || mode === 'all') && !force) {
     try {
       const currentConfig = loadHarnessConfig(process.cwd(), configPath);
       const prereq = inspectPrerequisites(currentConfig);
       if (!prereq.isComplete) {
         console.warn(`\n======================================================`);
-        console.warn(` ⚠️ CẢNH BÁO: THIẾU ĐIỀU KIỆN TIÊN QUYẾT ĐỂ TEST FULL`);
-        console.warn(` (Nguyên tắc chống test qua loa / Anti-Superficiality)`);
+        console.warn(` ⛔ DỪNG TIẾN TRÌNH: THIẾU ĐIỀU KIỆN TIÊN QUYẾT ĐỂ TEST FULL`);
+        console.warn(` (Nguyên tắc chống kiểm thử qua loa / Anti-Superficiality Gate)`);
         console.warn(`======================================================`);
         for (const m of prereq.missing) {
           console.warn(` • [${m.type}] ${m.title}`);
           console.warn(`   -> ${m.description}`);
           console.warn(`   -> Khắc phục: ${m.actionRequired}\n`);
         }
-        console.warn(`Thêm cờ '--force' nếu muốn ép chạy chỉ các trang công khai.\n`);
+        console.warn(`------------------------------------------------------`);
+        console.warn(` CÁC LỰA CHỌN TIẾP TỤC HỢP LỆ:`);
+        console.warn(` 1. Kiểm thử phân hệ công khai không cần auth:`);
+        console.warn(`    $ agent-harness test:module public`);
+        console.warn(` 2. Tự động khởi tạo bộ tham số động mẫu:`);
+        console.warn(`    $ agent-harness fixtures:mock`);
+        console.warn(` 3. Cung cấp tài khoản test trong harness.config.json.`);
+        console.warn(` 4. Ép chạy bỏ qua xác thực: thêm cờ '--force'.\n`);
+        process.exit(3);
       }
-    } catch {}
+    } catch (err) {
+      if (err.code !== 'ENOENT') throw err;
+    }
   }
 
   try {
