@@ -51,18 +51,19 @@ To test cross-system realtime interactions, spawn 3 concurrent persona subagents
 3. `QA Hotel Owner Persona`: Dedicated window (`new_page` -> `/owner/dashboard`). Asserts tape chart status update, revenue increment, and 0 console errors.
 All 3 personas operate on independent Chrome windows concurrently without session leakage.
 
-### 3.2 Role-Based Module Swarm & Interactive 2-Step Flow
-When testing full application capabilities, routes are partitioned into 6 discrete modules based on RBAC roles:
-1. `public` (Public & Onboarding - 22 routes, unauthenticated)
-2. `guest_os` (Guest In-Room Experience - 8 routes, guest QR session)
-3. `frontdesk` (Front Desk & Housekeeping Ops - 10 routes, `HOTEL_FRONTDESK`)
-4. `owner` (Hotel Owner & Revenue Operations - 29 routes, `TENANT_OWNER`)
-5. `marketplace` (Partner Marketplace - 7 routes, `SERVICE_STAFF`)
-6. `admin` (Platform Super Admin - 11 routes, `SUPER_ADMIN`)
+### 3.2 Universal Role-Based Module Swarm & Interactive 2-Step Flow (For ANY Project)
+When testing full application capabilities, routes are partitioned into discrete modules based on RBAC roles (either declared in `harness.config.json` via `config.modules`, or auto-inferred universally across any Web/SaaS/E-commerce/Hospitality stack):
+- **Universal Project Modules** (E-commerce, SaaS, CRM, Portals):
+  - `public`: Landing, Docs, Pricing, Login, Register (unauthenticated).
+  - `portal` / `user`: User Dashboard, Account, Settings, Orders (`USER` / `CUSTOMER`).
+  - `admin`: Backoffice, Platform Management, System Logs (`SUPER_ADMIN`).
+  - `partner`: Merchant, Vendor, Service Provider (`VENDOR` / `PARTNER`).
+- **Domain Preset Modules** (e.g. VietSage Hotel PMS):
+  - `public`, `guest_os`, `frontdesk`, `owner`, `marketplace`, `admin`.
 
-**Deterministic 2-Step Selection Protocol**:
+**Universal Deterministic 2-Step Selection Protocol**:
 - Step 1: Prompt Disambiguation (Dual-Pass vs Code vs Flow vs Status).
-- Step 2: If Flow or Full Test selected -> Harness automatically presents the 6 Role Modules. Agent prompts user to pick a target module or launch full 6-module subagent swarm (`agent-harness subagents:modules`).
+- Step 2: If Flow or Full Test selected -> Harness automatically detects and presents the Project's Role Modules. Agent prompts user to pick a target module or launch full multi-module subagent swarm (`agent-harness subagents:modules`).
 - Isolated Context: Each module subagent receives an isolated browser session (`isolatedContext: "mod-<id>-<entropy>"`), ensuring cookies and state never bleed across roles.
 
 ---

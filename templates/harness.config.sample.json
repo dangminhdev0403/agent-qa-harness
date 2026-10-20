@@ -106,5 +106,52 @@
         ]
       }
     ]
+  },
+
+  "fixtures": {
+    "id": "demo-id-101",
+    "userId": "usr-demo-01",
+    "orderId": "ord-demo-2026",
+    "invoiceId": "inv-demo-2026"
+  },
+
+  "personas": {
+    "admin": {
+      "name": "System Administrator",
+      "role": "SUPER_ADMIN",
+      "auth": {
+        "email": "admin@example.com",
+        "password": "Password123!"
+      }
+    },
+    "user": {
+      "name": "Standard Customer",
+      "role": "CUSTOMER",
+      "auth": {
+        "email": "customer@example.com",
+        "password": "Password123!"
+      }
+    }
+  },
+
+  "modules": {
+    "public": {
+      "name": "Public Pages",
+      "role": "Unauthenticated Guest",
+      "requiresAuth": false,
+      "patterns": ["/", "/about", "/pricing", "/login", "/register"]
+    },
+    "portal": {
+      "name": "Customer Portal",
+      "role": "CUSTOMER",
+      "requiresAuth": true,
+      "patterns": ["/dashboard", "/dashboard/*", "/account", "/orders/*"]
+    },
+    "admin": {
+      "name": "Backoffice Management",
+      "role": "SUPER_ADMIN",
+      "requiresAuth": true,
+      "patterns": ["/admin", "/admin/*"]
+    }
   }
 }

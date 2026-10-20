@@ -127,41 +127,73 @@ sequenceDiagram
 # Lấy kế hoạch điều phối Sub-Agents song song kèm Session ID cửa sổ Chrome
 agent-harness subagents:plan
 
-# Lấy kế hoạch Swarm Đa Persona (Khách - Lễ tân - Chủ khách sạn trên 3 cửa sổ độc lập)
+# Lấy kế hoạch Swarm Đa Persona (Khách - Lễ tân - Quản trị trên 3 cửa sổ độc lập)
 agent-harness subagents:personas
 
-# Lấy kế hoạch Swarm 6 Module theo Vai trò (Role-Based Subagent Swarm)
+# Lấy kế hoạch Swarm Sub-Agents theo Phân Hệ Vai Trò (Tự động nhận diện cho MỌI dự án)
 agent-harness subagents:modules
 
-# Chạy kiểm thử riêng cho 1 Module cụ thể:
+# Tự động tạo bộ tham số URL động mẫu ([param] hoặc :param) chống lỗi 404:
+agent-harness fixtures:mock
+
+# Chạy kiểm thử riêng cho 1 Module cụ thể của dự án:
 agent-harness test:module public
-agent-harness test:module guest_os
-agent-harness test:module frontdesk
-agent-harness test:module owner
-agent-harness test:module marketplace
+agent-harness test:module portal
 agent-harness test:module admin
 
 # Lấy cấu hình Sub-Agent tự sửa lỗi trên nhánh cô lập
 agent-harness subagents:fix
 ```
 
-### 4. Phân Chia Kiểm Thử Theo 6 Module Vai Trò & Quy Trình Lựa Chọn 2 Bước
-Để kiểm thử triệt để toàn bộ 87+ routes mà không gây xung đột phiên đăng nhập (session/cookies), Harness phân chia hệ thống thành **6 Phân hệ Nghiệp vụ (Role-Based Modules)**:
+### 4. Kiến Trúc Phân Hệ Vai Trò Đa Năng Cho MỌI Dự Án (Universal Role-Based Modules)
+Để kiểm thử triệt để toàn bộ hệ thống mà không gây xung đột phiên đăng nhập (session/cookies) và không bị giới hạn trong một loại dự án cụ thể, Harness hỗ trợ **3 tầng nhận diện phân hệ**:
 
-| Mã Module | Tên Phân Hệ | Vai trò (Role) | Yêu cầu Auth | Số Route tiêu biểu |
-| :--- | :--- | :--- | :---: | :--- |
-| `public` | Trang chủ & Khám phá | Công khai / Unauthenticated | ❌ Không | Trang chủ, Giới thiệu, Bảng giá, Onboarding, Đăng nhập. |
-| `guest_os` | Trải nghiệm Khách lưu trú | Khách quét mã QR / Đặt phòng | 🔑 Mã phòng/QR | Gọi khăn tắm, gọi món, mini bar, gửi yêu cầu buồng phòng. |
-| `frontdesk` | Lễ tân & Buồng phòng | `HOTEL_FRONTDESK` | 🔐 Có | Xử lý yêu cầu khách, bàn giao buồng phòng, check-in nhanh. |
-| `owner` | Quản lý & Doanh thu Khách sạn | `TENANT_OWNER` | 🔐 Có | Sơ đồ Tape Chart, phòng ốc, hóa đơn, doanh thu, cài đặt. |
-| `marketplace` | Chợ Dịch vụ Đối tác | `SERVICE_STAFF` | 🔐 Có | Danh mục dịch vụ, tour, voucher, quản lý đơn hàng đối tác. |
-| `admin` | Quản trị Nền tảng | `SUPER_ADMIN` | 🔐 Có | Giám sát toàn hệ thống, quản lý khách sạn đối tác, logs. |
+#### A. Khai báo Tùy Chỉnh Linh Hoạt Trong `harness.config.json` (Custom Project Modules)
+Bất kỳ dự án nào (E-commerce, SaaS, ERP, EdTech, Fintech) đều có thể tự khai báo các module theo vai trò nghiệp vụ của mình:
+```json
+{
+  "modules": {
+    "public": {
+      "name": "Trang Mua Sắm & Đăng Ký",
+      "role": "GUEST",
+      "requiresAuth": false,
+      "patterns": ["/", "/products", "/products/*", "/cart", "/login", "/register"]
+    },
+    "customer": {
+      "name": "Cổng Khách Hàng",
+      "role": "CUSTOMER",
+      "requiresAuth": true,
+      "patterns": ["/account", "/account/*", "/orders", "/orders/*"]
+    },
+    "vendor": {
+      "name": "Gian Hàng Đối Tác",
+      "role": "MERCHANT",
+      "requiresAuth": true,
+      "patterns": ["/vendor/*", "/merchant/*"]
+    },
+    "admin": {
+      "name": "Quản Trị Hệ Thống",
+      "role": "SUPER_ADMIN",
+      "requiresAuth": true,
+      "patterns": ["/admin", "/admin/*"]
+    }
+  }
+}
+```
 
-**Quy Trình Lựa Chọn 2 Bước (Interactive 2-Step Option Flow):**
+#### B. Tự Động Phân Cụm Thông Minh (Universal Heuristic Clustering)
+Nếu dự án chưa khai báo `config.modules`, Harness sẽ **tự động phân cụm dựa trên cấu trúc đường dẫn URL và danh sách Persona**:
+* **`public`**: Các trang công khai, tài liệu, bảng giá, đăng nhập, đăng ký (`/`, `/about`, `/pricing`, `/login`, `/register`, `/auth/*`, `/docs/*`).
+* **`portal` / `user`**: Không gian làm việc cá nhân của người dùng đã đăng nhập (`/dashboard/*`, `/app/*`, `/account/*`, `/profile/*`, `/settings/*`, `/orders/*`, `/billing/*`).
+* **`admin`**: Hệ thống quản trị nền tảng cấp cao (`/admin/*`, `/superadmin/*`, `/system/*`, `/ops/*`).
+* **`partner` / `vendor`**: Cổng đối tác cung ứng, nhà bán lẻ, dịch vụ liên kết (`/vendor/*`, `/merchant/*`, `/partner/*`, `/seller/*`, `/service/*`).
+* **Hospitality Preset**: Tự động kích hoạt bộ 6 Module chuyên sâu (`guest_os`, `frontdesk`, `owner`, `marketplace`, `admin`, `public`) nếu phát hiện dự án quản lý khách sạn/PMS.
+
+#### C. Quy Trình Lựa Chọn 2 Bước Đa Năng (Universal 2-Step Option Flow)
 1. **Bước 1 (Chọn Chế độ tổng quát)**: Người dùng chọn Mode 1 (Code), Mode 2 (Flow) hoặc Full Dual-Pass.
-2. **Bước 2 (Chọn Module hoặc Swarm)**: Hệ thống hiển thị danh sách 6 Module trên:
-   - Người dùng có thể chọn **Test từng Module riêng biệt** (Ví dụ: chỉ test phân hệ `owner` hoặc `frontdesk`).
-   - Hoặc chọn **Chạy Full Swarm 6 Subagents song song** (Mỗi Subagent mở 1 cửa sổ Chrome với `isolatedContext` riêng biệt, không đè cookies lẫn nhau).
+2. **Bước 2 (Chọn Module hoặc Swarm)**: Hệ thống tự động phân tích và hiển thị danh sách các Module thực tế của dự án đó:
+   - Người dùng có thể chọn **Test từng Module riêng biệt** (Ví dụ: `agent-harness test:module customer`).
+   - Hoặc chọn **Chạy Full Swarm song song** (Mỗi Subagent mở 1 cửa sổ Chrome với `isolatedContext` riêng biệt, không đè cookies lẫn nhau).
 
 ---
 

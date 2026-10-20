@@ -226,16 +226,17 @@ async function main() {
 
   if (command === 'test:module') {
     const modId = args[1];
-    if (!modId || !HARNESS_MODULES[modId]) {
+    const config = loadHarnessConfig(process.cwd());
+    const partitioned = partitionRoutesByModule(config.browser?.routes || [], config);
+    const modDef = partitioned[modId];
+
+    if (!modId || !modDef) {
       console.error(`\n Lỗi: Module không hợp lệ hoặc chưa được cung cấp.`);
-      console.error(`Các modules khả dụng: ${Object.keys(HARNESS_MODULES).join(', ')}`);
-      console.error(`Ví dụ: agent-harness test:module public\n`);
+      console.error(`Các modules khả dụng cho dự án này: ${Object.keys(partitioned).join(', ')}`);
+      console.error(`Ví dụ: agent-harness test:module ${Object.keys(partitioned)[0] || 'public'}\n`);
       process.exit(1);
     }
 
-    const config = loadHarnessConfig(process.cwd());
-    const partitioned = partitionRoutesByModule(config.browser?.routes || []);
-    const modDef = partitioned[modId];
     const targetRoutes = modDef?.routes || [];
 
     // Kiểm tra điều kiện tiên quyết riêng cho module này (Anti-Superficiality Gate)

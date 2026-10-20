@@ -38,18 +38,18 @@ STRICT INVARIANT: Agents are FORBIDDEN from executing shallow/superficial partia
    - HALT AND ASK: Explicitly prompt user (via `ask_question` or inquiry) to provide credentials/fixtures or authorize automated test fixture seeding.
 3. **Execution Gate**: Only proceed to full suite execution once all necessary prerequisites are satisfied or user explicitly grants `--force` bypass.
 
-### 5. ROLE-BASED MODULE PARTITIONING & SUBAGENT SWARM DISPATCH
-To prevent superficial testing and avoid cookie collisions across user roles, routes are strictly partitioned into 6 discrete modules:
-- `public`: Landing, Docs, Onboarding (unauthenticated)
-- `guest_os`: Guest In-Room Portal (/guest, /qr, /amenities)
-- `frontdesk`: Front Desk & Room Ops (/frontdesk, /housekeeping)
-- `owner`: Hotel Management & Revenue (/owner, /hotels, /tape-chart)
-- `marketplace`: Partner Marketplace (/marketplace, /services)
-- `admin`: Platform Super Admin (/admin, /system)
+### 5. UNIVERSAL ROLE-BASED MODULE PARTITIONING & SUBAGENT SWARM DISPATCH (FOR ANY PROJECT)
+To prevent superficial testing and avoid cookie collisions across user roles, routes in ANY repository are partitioned into discrete modules (via `config.modules` in `harness.config.json` or automatic heuristic clustering):
+- **Universal Stacks** (SaaS, E-commerce, ERP, Fintech, Portals):
+  - `public`: Landing, Docs, Pricing, Login, Register (unauthenticated).
+  - `portal` / `user`: User Workspace, Account, Orders, Settings (requires `USER` auth).
+  - `admin`: Backoffice, Platform Admin, System Logs (requires `ADMIN` auth).
+  - `partner`: Merchant, Vendor, Service Provider (requires `VENDOR` auth).
+- **Custom Project Modules**: Declared explicitly under `config.modules` in `harness.config.json`.
 
 **Mandatory 2-Step Interactive Option Flow**:
-1. When user initiates test flow, present the 4 primary execution options (ask_question).
-2. Upon selecting Flow / Full test, the agent MUST present the 6 Role Modules list and allow user to select:
-   - `[All] Full Parallel Swarm (6 dedicated Subagents on 6 isolated Chrome windows)`
-   - `Individual Module: public / guest_os / frontdesk / owner / marketplace / admin`
-3. Execute via `agent-harness test:module <id>` or dispatch parallel subagents with unique `isolatedContext` per role. Never mix auth sessions across roles.
+1. When user initiates test flow, present the primary execution options (Dual-Pass, Code, Flow, Status).
+2. Upon selecting Flow or Full test, the agent MUST present the target project's detected/configured Role Modules list and allow user to select:
+   - `[All] Full Parallel Swarm (Dedicated Subagents on isolated Chrome windows per module)`
+   - `Individual Module (e.g. public, portal, admin, partner, or custom modules)`
+3. Execute via `agent-harness test:module <id>` or dispatch parallel subagents with unique `isolatedContext: "mod-<id>-..."` per role. Never mix auth sessions across roles.

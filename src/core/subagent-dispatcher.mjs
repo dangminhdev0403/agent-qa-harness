@@ -175,11 +175,13 @@ OPERATE ON DEDICATED CHROME WINDOW:
     const projectName = config.project || path.basename(this.cwd);
     const baseUrl = config.baseUrl || "http://localhost:3000";
     const fixtures = config.fixtures || {};
-    const partitioned = partitionRoutesByModule(config.browser?.routes || []);
+    const partitioned = partitionRoutesByModule(config.browser?.routes || [], config);
 
     const targetModuleKeys = (moduleFilter && moduleFilter.length > 0)
       ? moduleFilter.filter(k => partitioned[k])
       : Object.keys(partitioned);
+
+    const loginPath = config.authProvider?.loginUrl || (config.browser?.routes?.includes('/dangnhap') ? '/dangnhap' : '/login');
 
     const workers = targetModuleKeys.map(modKey => {
       const mod = partitioned[modKey];
@@ -205,7 +207,7 @@ ${sampleRoutes.map(r => `• ${baseUrl}${r}`).join('\n')}
 
 OPERATIONAL PROTOCOL (DEDICATED CHROME WINDOW):
 1. WINDOW CREATION: Call chrome-devtools-mcp tool \`new_page(url: "${baseUrl}${sampleRoutes[0] || ''}", isolatedContext: "${sessionId}")\`.
-2. AUTHENTICATION: ${mod.requiresAuth ? `This module requires Role "${mod.role}". If redirected to /dangnhap, authenticate with valid ${mod.role} credentials before proceeding.` : 'No auth required. Test public UI elements and form validations directly.'}
+2. AUTHENTICATION: ${mod.requiresAuth ? `This module requires Role "${mod.role}". If redirected to authentication (${loginPath}), authenticate with valid ${mod.role} credentials before proceeding.` : 'No auth required. Test public UI elements and form validations directly.'}
 3. VERIFICATION GATES:
    - Navigate each module route.
    - Assert 0 console errors (\`list_console_messages\`).
