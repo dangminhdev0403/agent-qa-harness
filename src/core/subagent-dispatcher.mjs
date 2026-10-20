@@ -347,12 +347,17 @@ ${incidentDetails}
 INSTRUCTIONS:
 1. WORKSPACE ISOLATION: You are running in an isolated branch workspace ('branch'). Your edits will NOT collide with master or concurrent agents.
 2. Read harness-out/INCIDENT_PACK.json for full incident reproduction details.
-3. Inspect ONLY the directly failing file (controller, gateway, component, or schema). Touch ZERO unrelated files.
-4. Apply the minimal atomic fix strictly adhering to project conventions.
-5. Verify your fix locally using \`agent-harness probe:${failingTier}\`.
-6. CIRCUIT BREAKER: Max 3 remediation attempts allowed. If you cannot solve within 3 tries, HALT immediately (exit code 2).
-7. If your fix involves browser verification, strictly use \`new_page\` to spawn a dedicated window and call \`close_page\` when done.
-8. Once verified green, report back your git commit/diff and verification status.`
+3. CHECK NON-FIXABLE BOUNDARIES FIRST:
+   If the incident is classified as 'REPORT_ONLY_DATABASE' (missing migration, column not found, Prisma P2022) or 'REPORT_ONLY_RBAC' (security permission guard):
+   - DO NOT attempt to run database migrations, ALTER TABLE, or strip @UseGuards() / permissions!
+   - Mark the incident as REPORT_ONLY, emit the structured root-cause dossier, and halt immediately.
+4. FOR AUTO-FIXABLE ISSUES (UI, Styling, Typography >= 12px, Click Handlers, DTO Keys):
+   - Inspect ONLY the directly failing component, service, or contract file. Touch ZERO unrelated files.
+   - Apply the minimal atomic fix strictly adhering to project conventions.
+   - Verify your fix locally using \`agent-harness probe:${failingTier}\`.
+5. CIRCUIT BREAKER: Max 3 remediation attempts allowed. If you cannot solve within 3 tries, HALT immediately (exit code 2).
+6. If your fix involves browser verification, strictly use \`new_page\` to spawn a dedicated window and call \`close_page\` when done.
+7. Once verified green, report back your git commit/diff and verification status.`
     };
   }
 }

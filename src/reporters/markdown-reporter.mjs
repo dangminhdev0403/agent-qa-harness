@@ -17,6 +17,26 @@ export function generateMarkdownReport(allResults, config) {
   rows.push(formatRow('Tier 2', 'Concurrency & Idempotency', concurrencyResults));
   rows.push(formatRow('Tier 3', 'Browser & Route Health', browserResults));
 
+  let reportOnlySection = '';
+  const incidentPackPath = path.join(outputDir, 'INCIDENT_PACK.json');
+  if (fs.existsSync(incidentPackPath)) {
+    try {
+      const pack = JSON.parse(fs.readFileSync(incidentPackPath, 'utf8'));
+      if (pack.reportOnlyDossiers && pack.reportOnlyDossiers.length > 0) {
+        reportOnlySection = `\n---\n\n## 🚨 Sự Cố Báo Cáo Chuyên Sâu (Report-Only Incidents - Không Tự Sửa)\n\nPhát hiện **${pack.reportOnlyDossiers.length}** lỗi thuộc phạm vi kiến trúc bảo mật RBAC hoặc Schema Database. Agent tuân thủ nguyên tắc không can thiệp DB:\n\n` +
+          pack.reportOnlyDossiers.map((d, i) =>
+            `### ${i + 1}. [${d.category}] ${d.categoryTitle}\n` +
+            `- **Mục tiêu / Route**: \`${d.target}\`\n` +
+            `- **Nguyên nhân gốc rễ**: ${d.rootCause}\n` +
+            `- **Lý do không tự sửa**: ${d.nonFixReason}\n` +
+            `- **Giải pháp đề xuất cho DBA/Dev**: ${d.remediationSuggestion}\n`
+          ).join('\n');
+      }
+    } catch (e) {
+      // ignore json parse error
+    }
+  }
+
   const md = `# Automated QA Harness Execution Report
 
 - **Project**: \`${config.project}\`
@@ -42,6 +62,7 @@ ${formatDetails(concurrencyResults)}
 
 ### 4. Browser Route Health
 ${formatDetails(browserResults)}
+${reportOnlySection}
 `;
 
   const reportFile = path.join(outputDir, 'HARNESS_REPORT.md');
