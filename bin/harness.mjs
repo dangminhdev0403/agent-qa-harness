@@ -43,9 +43,9 @@ KIỂM TRA ĐIỀU KIỆN TIÊN QUYẾT (CHỐNG TEST QUA LOA):
   check:prereq         Viết tắt của audit:prerequisites
 
 KIỂM THỬ THEO PHÂN HỆ VAI TRÒ (ROLE-BASED MODULES):
-  test:module <tên>    Chạy kiểm thử riêng cho 1 Module cụ thể:
-                       (public | guest_os | frontdesk | owner | marketplace | admin)
-  subagents:modules    Xuất JSON kế hoạch 6 Sub-Agents song song tương ứng với 6 Modules
+  test:module <tên>    Chạy kiểm thử riêng cho 1 Module cụ thể
+  subagents:modules    Xuất JSON kế hoạch Sub-Agents kèm invokeArgs sẵn sàng gọi trực tiếp invoke_subagent
+  subagents:dispatch   Viết tắt của subagents:modules
 
 ĐIỀU PHỐI SUB-AGENTS SONG SONG:
   subagents:plan       Xuất JSON kế hoạch điều phối 2 Sub-Agents song song (Code Tester + Flow Tester với cửa sổ Chrome riêng biệt)
@@ -196,7 +196,7 @@ async function main() {
     process.exit(report.isComplete ? 0 : 3);
   }
 
-  if (command === 'subagents:modules') {
+  if (command === 'subagents:modules' || command === 'subagents:dispatch') {
     const dispatcher = new SubagentDispatcher(process.cwd());
     const filter = args.slice(1);
     const plan = dispatcher.generateModuleSwarmPlan(filter);

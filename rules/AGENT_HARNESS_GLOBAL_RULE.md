@@ -53,3 +53,9 @@ To prevent superficial testing and avoid cookie collisions across user roles, ro
    - `[All] Full Parallel Swarm (Dedicated Subagents on isolated Chrome windows per module)`
    - `Individual Module (e.g. public, portal, admin, partner, or custom modules)`
 3. Execute via `agent-harness test:module <id>` or dispatch parallel subagents with unique `isolatedContext: "mod-<id>-..."` per role. Never mix auth sessions across roles.
+
+### 6. MANDATORY SUBAGENT INVOCATION STANDARD (DIRECT TOOL CALL REQUIRED)
+STRICT PROTOCOL: When user triggers subagent execution ("thực thi sub_agents", "bắn lệnh subagent", "chạy swarm các module"):
+1. The AI Agent MUST NOT reply with a passive text summary or simply output the JSON plan.
+2. The AI Agent MUST IMMEDIATELY execute tool calls: `invoke_subagent(TypeName: "self", Role: worker.Role, Model: "inherit", Prompt: worker.Prompt)`.
+3. Auto-load credentials: If `account.json` or `config.personas` exists, the subagent prompt already contains valid login credentials. Subagents execute autonomous flow testing on dedicated Chrome windows (`isolatedContext`) and report back upon completion.

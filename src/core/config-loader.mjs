@@ -49,11 +49,67 @@ export function loadHarnessConfig(cwd = process.cwd(), customPath = null) {
   return sanitizeConfig(config, path.dirname(targetFile));
 }
 
+function discoverAndMergeAccounts(existingPersonas = {}, rootDir) {
+  const merged = { ...existingPersonas };
+  const candidateFiles = ['account.json', 'accounts.json', 'credentials.json', 'test-users.json', '.accounts.json'];
+
+  for (const filename of candidateFiles) {
+    const filePath = path.resolve(rootDir, filename);
+    if (fs.existsSync(filePath)) {
+      try {
+        const raw = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        if (typeof raw === 'object' && raw !== null) {
+          for (const [key, val] of Object.entries(raw)) {
+            if (val && typeof val === 'object') {
+              const username = val.username || val.email || val.user;
+              const password = val.password || val.pass;
+              const normalized = {
+                name: val.name || key,
+                role: val.role || key.toUpperCase(),
+                username,
+                email: val.email || username,
+                password,
+                auth: { username, email: val.email || username, password }
+              };
+
+              merged[key] = { ...normalized, ...(merged[key] || {}) };
+
+              // Universal semantic role aliases
+              if (key === 'hca_owner' || key === 'tenant') {
+                merged.owner = { ...normalized, ...(merged.owner || {}) };
+              }
+              if (key === 'frontdesk' || key === 'housekeeping') {
+                merged.frontdesk = { ...normalized, ...(merged.frontdesk || {}) };
+              }
+              if (key === 'marketplace') {
+                merged.marketplace = { ...normalized, ...(merged.marketplace || {}) };
+              }
+              if (key === 'admin' || key === 'superadmin') {
+                merged.admin = { ...normalized, ...(merged.admin || {}) };
+              }
+            }
+          }
+        }
+      } catch {}
+      break;
+    }
+  }
+
+  return merged;
+}
+
 function sanitizeConfig(config, rootDir) {
   const baseUrl = (config.baseUrl || 'http://localhost:3000').replace(/\/$/, '');
   if (baseUrl.includes('.localhost') || baseUrl.includes('127.0.0.1')) {
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
   }
+
+  const personas = discoverAndMergeAccounts(config.personas || {}, rootDir);
+
+  // Auto-populate authProvider credentials from personas if not explicitly set
+  const authCredentials = (config.authProvider?.credentials && Object.keys(config.authProvider.credentials).length > 0)
+    ? config.authProvider.credentials
+    : (personas.admin?.auth || Object.values(personas)[0]?.auth || {});
 
   return {
     project: config.project || path.basename(rootDir),
@@ -73,10 +129,10 @@ function sanitizeConfig(config, rootDir) {
       healthEndpoint: config.preflight?.healthEndpoint || ''
     },
     authProvider: {
-      enabled: config.authProvider?.enabled ?? false,
+      enabled: config.authProvider?.enabled ?? (Object.keys(authCredentials).length > 0),
       endpoint: config.authProvider?.endpoint || '/api/v1/auth/login',
       method: config.authProvider?.method || 'POST',
-      credentials: config.authProvider?.credentials || {},
+      credentials: authCredentials,
       tokenPath: config.authProvider?.tokenPath || 'accessToken'
     },
     static: {
@@ -97,7 +153,7 @@ function sanitizeConfig(config, rootDir) {
       scenarios: config.concurrency?.scenarios || []
     },
     fixtures: config.fixtures || {},
-    personas: config.personas || {},
+    personas,
     browser: {
       enabled: config.browser?.enabled ?? false,
       zeroConsoleErrors: config.browser?.zeroConsoleErrors ?? true,

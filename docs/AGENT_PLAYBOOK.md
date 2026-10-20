@@ -66,6 +66,12 @@ When testing full application capabilities, routes are partitioned into discrete
 - Step 2: If Flow or Full Test selected -> Harness automatically detects and presents the Project's Role Modules. Agent prompts user to pick a target module or launch full multi-module subagent swarm (`agent-harness subagents:modules`).
 - Isolated Context: Each module subagent receives an isolated browser session (`isolatedContext: "mod-<id>-<entropy>"`), ensuring cookies and state never bleed across roles.
 
+### 3.3 Mandatory Subagent Invocation Invariant (Direct Tool Calling)
+STRICT INVARIANT: When the user requests subagent execution (e.g. "thực thi các test flow các module với sub_agents", "bắn lệnh sub_agents", "chạy subagent swarm"):
+- The Coordinator Agent is **STRICTLY FORBIDDEN** from merely printing text, returning JSON to the user, or stopping.
+- The Coordinator Agent **MUST IMMEDIATELY EXECUTE** the `invoke_subagent` tool calls for each module worker in the plan.
+- Each subagent worker executes its flow on its dedicated Chrome window via `new_page(url, isolatedContext)` and reports back results automatically.
+
 ---
 
 ## 4. TIER-BY-TIER SELF-HEALING DIAGNOSTICS

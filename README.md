@@ -195,6 +195,19 @@ Nếu dự án chưa khai báo `config.modules`, Harness sẽ **tự động ph�
    - Người dùng có thể chọn **Test từng Module riêng biệt** (Ví dụ: `agent-harness test:module customer`).
    - Hoặc chọn **Chạy Full Swarm song song** (Mỗi Subagent mở 1 cửa sổ Chrome với `isolatedContext` riêng biệt, không đè cookies lẫn nhau).
 
+#### D. Tự Động Nạp Tài Khoản Từ `account.json` (Zero-Config Accounts Discovery)
+Nếu trong thư mục gốc của dự án có sẵn các file tài khoản (`account.json`, `accounts.json`, `credentials.json`, `test-users.json`), Harness sẽ **tự động quét và nạp các tài khoản này vào `config.personas`**:
+- Tự động map các alias vai trò: `admin` -> Admin, `tenant` / `owner` / `hca_owner` -> Owner, `frontdesk` / `housekeeping` -> Frontdesk, `marketplace` -> Marketplace.
+- Tự động nhúng username/mật khẩu trực tiếp vào prompt của Subagent tương ứng.
+- Loại bỏ hoàn toàn thao tác cấu hình thủ công.
+
+#### E. Quy Chuẩn Bắt Buộc "Bắn Lệnh Sub-Agents Trực Tiếp" (Direct Subagent Invocation)
+> **QUY TẮC CỐT LÕI CHO AI AGENT:**  
+> Khi người dùng yêu cầu kiểm thử bằng sub-agents (ví dụ: *"thực thi test flow các module với sub_agents"*, *"bắn lệnh sub_agents"*):  
+> • AI Agent **TUYỆT ĐỐI KHÔNG** được chỉ in ra văn bản hoặc hiển thị kế hoạch JSON rồi dừng lại.  
+> • AI Agent **BẮT BUỘC PHẢI THỰC THI NGAY LẬP TỨC** các tool call `invoke_subagent` cho từng worker trong kế hoạch swarm.  
+> • Mỗi Subagent mở một cửa sổ Chrome riêng biệt với `isolatedContext: "mod-<id>-..."`, tự động đăng nhập bằng tài khoản được nạp từ `account.json`, điều hướng kiểm thử các routes và báo cáo kết quả.
+
 ---
 
 ## 🚫 Nguyên Tắc Bất Biến: Chống Kiểm Thử Nửa Vời & Tự Động Hỏi Khi Thiếu Điều Kiện (Anti-Superficiality)

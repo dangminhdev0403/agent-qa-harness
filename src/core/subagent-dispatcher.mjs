@@ -189,32 +189,60 @@ OPERATE ON DEDICATED CHROME WINDOW:
       const resolvedRoutes = mod.routes.map(r => resolveDynamicRoute(r, fixtures));
       const sampleRoutes = resolvedRoutes.slice(0, 10);
 
+      // Locate credentials from config personas or auto-discovered account.json
+      const persona = config.personas?.[mod.id] || config.personas?.[modKey] || Object.values(config.personas || {}).find(p => p.role === mod.authRole);
+      const authInstruction = persona
+        ? `AUTHENTICATION CREDENTIALS (FROM ACCOUNT CONFIG):
+- Username / Email: "${persona.username || persona.email}"
+- Password: "${persona.password}"
+If redirected to login page (${loginPath}):
+- Fill the username/email input with "${persona.username || persona.email}".
+- Fill the password input with "${persona.password}".
+- Click the submit / login button and wait for redirect.`
+        : (mod.requiresAuth ? `AUTHENTICATION: This module requires Role "${mod.role}". Authenticate with valid ${mod.role} credentials if prompted.` : 'AUTHENTICATION: No auth required for public testing.');
+
+      const prompt = `Act as the dedicated QA Subagent for Module "${mod.name}" (Role: ${mod.role}) in project "${projectName}".
+
+TESTING SCOPE (${mod.routes.length} routes in this module):
+${sampleRoutes.map(r => `• ${baseUrl}${r}`).join('\n')}
+
+${authInstruction}
+
+OPERATIONAL PROTOCOL (DEDICATED CHROME WINDOW):
+1. WINDOW CREATION: Call chrome-devtools-mcp tool \`new_page(url: "${baseUrl}${sampleRoutes[0] || ''}", isolatedContext: "${sessionId}")\`.
+2. VERIFICATION GATES ON EVERY ROUTE:
+   - For each route in TESTING SCOPE:
+     - Navigate to route: \`navigate_page(url: "${baseUrl}<route>")\`.
+     - Check console errors: \`list_console_messages\` -> assert ZERO error level messages.
+     - Check network errors: \`list_network_requests\` -> assert ZERO 4xx/5xx responses.
+     - Verify in-place tab isolation (actions execute in drawer/modal, zero disruptive cross-tab redirects).
+3. EVIDENCE PERSISTENCE:
+   - Capture checkpoint screenshot: \`take_screenshot(filePath: "harness-out/screenshots/${sessionId}/checkpoint.png")\`.
+4. CLEAN TEARDOWN:
+   - ALWAYS call \`close_page\` when finished (PASS or FAIL).
+   - Report concise execution summary (total routes tested, console status, network status, blockers).`;
+
+      const roleTitle = `QA ${mod.name} Inspector`;
+
       return {
         TypeName: "self",
-        Role: `QA ${mod.name} Inspector`,
+        Role: roleTitle,
         ModuleId: mod.id,
         RoleDescription: mod.role,
         Model: "inherit",
         Workspace: "inherit",
         WindowSession: sessionId,
         RequiresAuth: mod.requiresAuth,
+        CredentialsAvailable: !!persona,
         TargetRoutesCount: mod.routes.length,
         Routes: resolvedRoutes,
-        Prompt: `Act as the dedicated QA Subagent for Module "${mod.name}" (Role: ${mod.role}) in project "${projectName}".
-
-TESTING SCOPE (${mod.routes.length} routes in this module):
-${sampleRoutes.map(r => `• ${baseUrl}${r}`).join('\n')}
-
-OPERATIONAL PROTOCOL (DEDICATED CHROME WINDOW):
-1. WINDOW CREATION: Call chrome-devtools-mcp tool \`new_page(url: "${baseUrl}${sampleRoutes[0] || ''}", isolatedContext: "${sessionId}")\`.
-2. AUTHENTICATION: ${mod.requiresAuth ? `This module requires Role "${mod.role}". If redirected to authentication (${loginPath}), authenticate with valid ${mod.role} credentials before proceeding.` : 'No auth required. Test public UI elements and form validations directly.'}
-3. VERIFICATION GATES:
-   - Navigate each module route.
-   - Assert 0 console errors (\`list_console_messages\`).
-   - Assert 0 network 4xx/5xx failures (\`list_network_requests\`).
-   - Verify in-place tab isolation (drawer/modal actions, zero cross-tab redirects).
-   - Capture checkpoint screenshots to harness-out/screenshots/${sessionId}/.
-4. CLEAN TEARDOWN: ALWAYS call \`close_page\` when finished (PASS or FAIL). Report concise execution summary.`
+        invokeArgs: {
+          TypeName: "self",
+          Role: roleTitle,
+          Model: "inherit",
+          Prompt: prompt
+        },
+        Prompt: prompt
       };
     });
 
