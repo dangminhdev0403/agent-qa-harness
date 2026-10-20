@@ -30,7 +30,7 @@ import { SubagentDispatcher } from './core/subagent-dispatcher.mjs';
  */
 export async function executeHarness(options = {}) {
   const cwd = options.cwd || process.cwd();
-  const config = loadHarnessConfig(cwd, options.configPath);
+  const config = options.configOverride || loadHarnessConfig(cwd, options.configPath);
   const mode = options.mode || 'all';
 
   console.log(`\n======================================================`);

@@ -51,6 +51,20 @@ To test cross-system realtime interactions, spawn 3 concurrent persona subagents
 3. `QA Hotel Owner Persona`: Dedicated window (`new_page` -> `/owner/dashboard`). Asserts tape chart status update, revenue increment, and 0 console errors.
 All 3 personas operate on independent Chrome windows concurrently without session leakage.
 
+### 3.2 Role-Based Module Swarm & Interactive 2-Step Flow
+When testing full application capabilities, routes are partitioned into 6 discrete modules based on RBAC roles:
+1. `public` (Public & Onboarding - 22 routes, unauthenticated)
+2. `guest_os` (Guest In-Room Experience - 8 routes, guest QR session)
+3. `frontdesk` (Front Desk & Housekeeping Ops - 10 routes, `HOTEL_FRONTDESK`)
+4. `owner` (Hotel Owner & Revenue Operations - 29 routes, `TENANT_OWNER`)
+5. `marketplace` (Partner Marketplace - 7 routes, `SERVICE_STAFF`)
+6. `admin` (Platform Super Admin - 11 routes, `SUPER_ADMIN`)
+
+**Deterministic 2-Step Selection Protocol**:
+- Step 1: Prompt Disambiguation (Dual-Pass vs Code vs Flow vs Status).
+- Step 2: If Flow or Full Test selected -> Harness automatically presents the 6 Role Modules. Agent prompts user to pick a target module or launch full 6-module subagent swarm (`agent-harness subagents:modules`).
+- Isolated Context: Each module subagent receives an isolated browser session (`isolatedContext: "mod-<id>-<entropy>"`), ensuring cookies and state never bleed across roles.
+
 ---
 
 ## 4. TIER-BY-TIER SELF-HEALING DIAGNOSTICS

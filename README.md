@@ -130,9 +130,38 @@ agent-harness subagents:plan
 # Lấy kế hoạch Swarm Đa Persona (Khách - Lễ tân - Chủ khách sạn trên 3 cửa sổ độc lập)
 agent-harness subagents:personas
 
+# Lấy kế hoạch Swarm 6 Module theo Vai trò (Role-Based Subagent Swarm)
+agent-harness subagents:modules
+
+# Chạy kiểm thử riêng cho 1 Module cụ thể:
+agent-harness test:module public
+agent-harness test:module guest_os
+agent-harness test:module frontdesk
+agent-harness test:module owner
+agent-harness test:module marketplace
+agent-harness test:module admin
+
 # Lấy cấu hình Sub-Agent tự sửa lỗi trên nhánh cô lập
 agent-harness subagents:fix
 ```
+
+### 4. Phân Chia Kiểm Thử Theo 6 Module Vai Trò & Quy Trình Lựa Chọn 2 Bước
+Để kiểm thử triệt để toàn bộ 87+ routes mà không gây xung đột phiên đăng nhập (session/cookies), Harness phân chia hệ thống thành **6 Phân hệ Nghiệp vụ (Role-Based Modules)**:
+
+| Mã Module | Tên Phân Hệ | Vai trò (Role) | Yêu cầu Auth | Số Route tiêu biểu |
+| :--- | :--- | :--- | :---: | :--- |
+| `public` | Trang chủ & Khám phá | Công khai / Unauthenticated | ❌ Không | Trang chủ, Giới thiệu, Bảng giá, Onboarding, Đăng nhập. |
+| `guest_os` | Trải nghiệm Khách lưu trú | Khách quét mã QR / Đặt phòng | 🔑 Mã phòng/QR | Gọi khăn tắm, gọi món, mini bar, gửi yêu cầu buồng phòng. |
+| `frontdesk` | Lễ tân & Buồng phòng | `HOTEL_FRONTDESK` | 🔐 Có | Xử lý yêu cầu khách, bàn giao buồng phòng, check-in nhanh. |
+| `owner` | Quản lý & Doanh thu Khách sạn | `TENANT_OWNER` | 🔐 Có | Sơ đồ Tape Chart, phòng ốc, hóa đơn, doanh thu, cài đặt. |
+| `marketplace` | Chợ Dịch vụ Đối tác | `SERVICE_STAFF` | 🔐 Có | Danh mục dịch vụ, tour, voucher, quản lý đơn hàng đối tác. |
+| `admin` | Quản trị Nền tảng | `SUPER_ADMIN` | 🔐 Có | Giám sát toàn hệ thống, quản lý khách sạn đối tác, logs. |
+
+**Quy Trình Lựa Chọn 2 Bước (Interactive 2-Step Option Flow):**
+1. **Bước 1 (Chọn Chế độ tổng quát)**: Người dùng chọn Mode 1 (Code), Mode 2 (Flow) hoặc Full Dual-Pass.
+2. **Bước 2 (Chọn Module hoặc Swarm)**: Hệ thống hiển thị danh sách 6 Module trên:
+   - Người dùng có thể chọn **Test từng Module riêng biệt** (Ví dụ: chỉ test phân hệ `owner` hoặc `frontdesk`).
+   - Hoặc chọn **Chạy Full Swarm 6 Subagents song song** (Mỗi Subagent mở 1 cửa sổ Chrome với `isolatedContext` riêng biệt, không đè cookies lẫn nhau).
 
 ---
 

@@ -10,6 +10,7 @@ import { checkAndSyncProject } from '../src/core/smart-sync.mjs';
 import { SubagentDispatcher } from '../src/core/subagent-dispatcher.mjs';
 import { loadHarnessConfig } from '../src/core/config-loader.mjs';
 import { inspectPrerequisites } from '../src/core/prerequisite-inspector.mjs';
+import { HARNESS_MODULES, partitionRoutesByModule } from '../src/core/module-registry.mjs';
 
 const args = process.argv.slice(2);
 const command = args[0] || 'run';
@@ -40,6 +41,11 @@ CÁC LỆNH TỰ ĐỘNG HÓA & TIỆN ÍCH:
 KIỂM TRA ĐIỀU KIỆN TIÊN QUYẾT (CHỐNG TEST QUA LOA):
   audit:prerequisites  Kiểm tra toàn diện điều kiện tiên quyết (Auth Wall, Fixtures, DB) trước khi test sâu
   check:prereq         Viết tắt của audit:prerequisites
+
+KIỂM THỬ THEO PHÂN HỆ VAI TRÒ (ROLE-BASED MODULES):
+  test:module <tên>    Chạy kiểm thử riêng cho 1 Module cụ thể:
+                       (public | guest_os | frontdesk | owner | marketplace | admin)
+  subagents:modules    Xuất JSON kế hoạch 6 Sub-Agents song song tương ứng với 6 Modules
 
 ĐIỀU PHỐI SUB-AGENTS SONG SONG:
   subagents:plan       Xuất JSON kế hoạch điều phối 2 Sub-Agents song song (Code Tester + Flow Tester với cửa sổ Chrome riêng biệt)
@@ -188,6 +194,45 @@ async function main() {
     const report = inspectPrerequisites(config);
     console.log(JSON.stringify(report, null, 2));
     process.exit(report.isComplete ? 0 : 3);
+  }
+
+  if (command === 'subagents:modules') {
+    const dispatcher = new SubagentDispatcher(process.cwd());
+    const filter = args.slice(1);
+    const plan = dispatcher.generateModuleSwarmPlan(filter);
+    console.log(JSON.stringify(plan, null, 2));
+    process.exit(0);
+  }
+
+  if (command === 'test:module') {
+    const modId = args[1];
+    if (!modId || !HARNESS_MODULES[modId]) {
+      console.error(`\n Lỗi: Module không hợp lệ hoặc chưa được cung cấp.`);
+      console.error(`Các modules khả dụng: ${Object.keys(HARNESS_MODULES).join(', ')}`);
+      console.error(`Ví dụ: agent-harness test:module public\n`);
+      process.exit(1);
+    }
+
+    const config = loadHarnessConfig(process.cwd());
+    const partitioned = partitionRoutesByModule(config.browser?.routes || []);
+    const targetRoutes = partitioned[modId]?.routes || [];
+
+    console.log(`\n======================================================`);
+    console.log(` KIỂM THỬ MODULE: ${HARNESS_MODULES[modId].name.toUpperCase()} (Vai trò: ${HARNESS_MODULES[modId].role})`);
+    console.log(` Số route trong module: ${targetRoutes.length}`);
+    console.log(`======================================================\n`);
+
+    config.browser.routes = targetRoutes;
+    config.browser.enabled = true;
+
+    const { overallPassed } = await executeHarness({
+      cwd: process.cwd(),
+      mode: 'flow',
+      autoStart: args.includes('--auto-start'),
+      noKill: args.includes('--no-kill'),
+      configOverride: config
+    });
+    process.exit(overallPassed ? 0 : 1);
   }
 
   if (command.startsWith('add:')) {

@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { HARNESS_MODULES, partitionRoutesByModule } from './module-registry.mjs';
+import { resolveDynamicRoute } from './prerequisite-inspector.mjs';
 
 /**
  * Subagent Dispatcher - Prepares optimized swarm subagent execution plans
@@ -161,6 +163,64 @@ OPERATE ON DEDICATED CHROME WINDOW:
       projectName,
       strategy: "multi_persona_swarm",
       personas: [guestWorker, receptionistWorker, ownerWorker]
+    };
+  }
+
+  /**
+   * Generates a Role-Based Module Swarm Plan
+   * Partitions the system into 6 discrete modules, each tested by a dedicated Subagent in an isolated Chrome window.
+   */
+  generateModuleSwarmPlan(moduleFilter = []) {
+    const config = this.getConfig() || {};
+    const projectName = config.project || path.basename(this.cwd);
+    const baseUrl = config.baseUrl || "http://localhost:3000";
+    const fixtures = config.fixtures || {};
+    const partitioned = partitionRoutesByModule(config.browser?.routes || []);
+
+    const targetModuleKeys = (moduleFilter && moduleFilter.length > 0)
+      ? moduleFilter.filter(k => partitioned[k])
+      : Object.keys(partitioned);
+
+    const workers = targetModuleKeys.map(modKey => {
+      const mod = partitioned[modKey];
+      const sessionId = this.generateWindowSessionId(`mod-${mod.id}`);
+      const resolvedRoutes = mod.routes.map(r => resolveDynamicRoute(r, fixtures));
+      const sampleRoutes = resolvedRoutes.slice(0, 10);
+
+      return {
+        TypeName: "self",
+        Role: `QA ${mod.name} Inspector`,
+        ModuleId: mod.id,
+        RoleDescription: mod.role,
+        Model: "inherit",
+        Workspace: "inherit",
+        WindowSession: sessionId,
+        RequiresAuth: mod.requiresAuth,
+        TargetRoutesCount: mod.routes.length,
+        Routes: resolvedRoutes,
+        Prompt: `Act as the dedicated QA Subagent for Module "${mod.name}" (Role: ${mod.role}) in project "${projectName}".
+
+TESTING SCOPE (${mod.routes.length} routes in this module):
+${sampleRoutes.map(r => `• ${baseUrl}${r}`).join('\n')}
+
+OPERATIONAL PROTOCOL (DEDICATED CHROME WINDOW):
+1. WINDOW CREATION: Call chrome-devtools-mcp tool \`new_page(url: "${baseUrl}${sampleRoutes[0] || ''}", isolatedContext: "${sessionId}")\`.
+2. AUTHENTICATION: ${mod.requiresAuth ? `This module requires Role "${mod.role}". If redirected to /dangnhap, authenticate with valid ${mod.role} credentials before proceeding.` : 'No auth required. Test public UI elements and form validations directly.'}
+3. VERIFICATION GATES:
+   - Navigate each module route.
+   - Assert 0 console errors (\`list_console_messages\`).
+   - Assert 0 network 4xx/5xx failures (\`list_network_requests\`).
+   - Verify in-place tab isolation (drawer/modal actions, zero cross-tab redirects).
+   - Capture checkpoint screenshots to harness-out/screenshots/${sessionId}/.
+4. CLEAN TEARDOWN: ALWAYS call \`close_page\` when finished (PASS or FAIL). Report concise execution summary.`
+      };
+    });
+
+    return {
+      projectName,
+      strategy: "role_module_swarm",
+      totalModules: workers.length,
+      modules: workers
     };
   }
 
