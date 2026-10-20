@@ -32,6 +32,8 @@ CÁC LỆNH TỰ ĐỘNG HÓA & TIỆN ÍCH:
   probe:browser        Chỉ chạy Tier 3 (Kiểm tra Route trình duyệt & Lỗi Console)
 
 TÙY CHỌN:
+  --auto-start         Tự động khởi động máy chủ bằng START (npm run start) nếu chưa chạy (TUYỆT ĐỐI KHÔNG CHẠY DEV)
+  --no-kill            Giữ nguyên máy chủ tiếp tục chạy sau khi test xong (không kill process)
   --mode <code|flow|all> Chọn chế độ thực thi (mặc định: all)
   --config <đường_dẫn>   Chỉ định file cấu hình harness.config.json tùy chỉnh
   --tier <0|1|2|3>       Chỉ chạy một Tier cụ thể
@@ -53,6 +55,7 @@ async function handleInit() {
     const fallback = {
       project: path.basename(process.cwd()),
       baseUrl: "http://localhost:3000",
+      server: { autoStart: false, startCommand: "npm run start" },
       static: { enabled: true, commands: [] },
       realtime: { enabled: false, scenarios: [] },
       concurrency: { enabled: false, scenarios: [] },
@@ -173,12 +176,17 @@ async function main() {
     tier = '3';
   }
 
+  const autoStart = args.includes('--auto-start');
+  const noKill = args.includes('--no-kill');
+
   try {
     const { overallPassed } = await executeHarness({
       cwd: process.cwd(),
       configPath,
       tier,
-      mode
+      mode,
+      autoStart,
+      noKill
     });
 
     process.exit(overallPassed ? 0 : 1);

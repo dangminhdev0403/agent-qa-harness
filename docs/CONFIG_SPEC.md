@@ -30,6 +30,7 @@
 | `baseUrl` | `string` | `"http://localhost:3000"` | Địa chỉ gốc của server đang chạy (Next.js, NestJS, Express, FastAPI...). |
 | `timeoutMs` | `number` | `30000` | Thời gian timeout tối đa cho mỗi lệnh kiểm thử (mili-giây). |
 | `outputDir` | `string` | `"harness-out"` | Thư mục lưu trữ kết quả kiểm thử, ảnh chụp màn hình và gói sự cố `INCIDENT_PACK.json`. |
+| `server` | `object` | `{ autoStart: false }` | Cấu hình tự động khởi động server bằng lệnh `start` (TUYỆT ĐỐI KHÔNG CHẠY `dev`). |
 | `preflight` | `object` | `{ enabled: true }` | Kiểm tra kết nối và chờ server sẵn sàng trước khi test. |
 | `authProvider` | `object` | `{ enabled: false }` | Tự động đăng nhập lấy JWT Token tươi trước khi chạy test. |
 | `static` | `object` | `{ enabled: true }` | Cấu hình kiểm tra tĩnh Tier 0 (UI rules, ESLint, Zod contracts, Typecheck). |
@@ -55,8 +56,22 @@ Hệ thống hỗ trợ tự động thay thế biến động trong **URL, Path
 
 ---
 
-## 3. Cấu Hình `preflight` & `authProvider`
+## 3. Cấu Hình `server`, `preflight` & `authProvider`
 
+### 3.1. Cấu Hình Tự Động Khởi Động Máy Chủ (`server`)
+Khi máy chủ chưa chạy, Harness có thể tự khởi động ngầm.  
+> **QUY TẮC AN TOÀN:** Chỉ được chạy lệnh `start` (`npm run start` / `pnpm start`). **Tuyệt đối KHÔNG chạy `dev`** để tránh hot-reload/file watchers gây xung đột hoặc sai lệch trạng thái khi bạn đang đồng thời chỉnh sửa code!
+
+```json
+"server": {
+  "autoStart": false, // hoặc true (hoặc truyền cờ --auto-start từ CLI)
+  "startCommand": "npm run start", // Bắt buộc là lệnh start
+  "timeoutMs": 25000,
+  "keepAlive": false // true: giữ nguyên server sau khi test; false: tự tắt giải phóng port
+}
+```
+
+### 3.2. Cấu Hình `preflight` & `authProvider`
 ```json
 "preflight": {
   "enabled": true,

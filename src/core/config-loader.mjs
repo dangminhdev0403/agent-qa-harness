@@ -55,6 +55,12 @@ function sanitizeConfig(config, rootDir) {
     rootDir,
     baseUrl: (config.baseUrl || 'http://localhost:3000').replace(/\/$/, ''),
     timeoutMs: config.timeoutMs || 30000,
+    server: {
+      autoStart: config.server?.autoStart ?? false,
+      startCommand: config.server?.startCommand || null,
+      timeoutMs: config.server?.timeoutMs || 25000,
+      keepAlive: config.server?.keepAlive ?? false
+    },
     preflight: {
       enabled: config.preflight?.enabled ?? true,
       retries: config.preflight?.retries || 3,
