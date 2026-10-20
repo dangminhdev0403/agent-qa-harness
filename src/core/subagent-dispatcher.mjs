@@ -191,13 +191,16 @@ OPERATE ON DEDICATED CHROME WINDOW:
 
       // Locate credentials from config personas or auto-discovered account.json
       const persona = config.personas?.[mod.id] || config.personas?.[modKey] || Object.values(config.personas || {}).find(p => p.role === mod.authRole);
-      const authInstruction = persona
+      const username = persona ? (persona.username || persona.email || persona.auth?.username || persona.auth?.email || persona.user) : null;
+      const password = persona ? (persona.password || persona.auth?.password || persona.pass) : null;
+
+      const authInstruction = (username && password)
         ? `AUTHENTICATION CREDENTIALS (FROM ACCOUNT CONFIG):
-- Username / Email: "${persona.username || persona.email}"
-- Password: "${persona.password}"
+- Username / Email: "${username}"
+- Password: "${password}"
 If redirected to login page (${loginPath}):
-- Fill the username/email input with "${persona.username || persona.email}".
-- Fill the password input with "${persona.password}".
+- Fill the username/email input with "${username}".
+- Fill the password input with "${password}".
 - Click the submit / login button and wait for redirect.`
         : (mod.requiresAuth ? `AUTHENTICATION: This module requires Role "${mod.role}". Authenticate with valid ${mod.role} credentials if prompted.` : 'AUTHENTICATION: No auth required for public testing.');
 
