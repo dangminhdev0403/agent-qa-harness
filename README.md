@@ -3,6 +3,22 @@
 > **Bộ khung kiểm thử tự động đa tầng (4-Tier Autonomous QA Harness) dành cho AI Agents & Archon Workflows.**  
 > Giải quyết triệt để các lỗi tiềm ẩn nguy hiểm trong các dự án full-stack: **"Socket không ăn / mất realtime"**, **"Duyệt sai / Race Condition / Double Approval"**, **"Lỗi ngầm Console / Network 4xx/5xx"**, và **"Lệch chuẩn API Contract & UI Rules"**.
 
+[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/dangminhdev0403/agent-qa-harness/blob/master/LICENSE)
+[![Engine](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg)](https://nodejs.org)
+[![Archon](https://img.shields.io/badge/archon-workflow%20ready-purple.svg)](https://github.com/dangminhdev0403/agent-qa-harness)
+
+---
+
+## 📑 Mục Lục
+1. [Tại sao cần Agent QA Harness?](#-tại-sao-cần-agent-qa-harness)
+2. [Nguyên Tắc Bất Biến: Living Harness Contract](#-nguyên-tắc-bất-biến-thêm-tính-năng-mới--bổ-sung-ngay-kịch-bản-harness)
+3. [Kiến Trúc Kiểm Thử 4 Tầng](#-kiến-trúc-kiểm-thử-đa-tầng-4-tier-test-architecture)
+4. [Bắt Đầu Nhanh (Quickstart 60 Giây)](#-bắt-đầu-nhanh-áp-dụng-cho-mọi-repo-trong-60-giây)
+5. [Tích Hợp Archon Workflow DAG](#-tích-hợp-archon-workflow-dag)
+6. [Cơ Chế Tự Phục Hồi (Self-Healing Loop)](#-cơ-chế-tự-phục-hồi-self-healing-incident-pack)
+7. [Bảng Tra Cứu Lệnh CLI Toàn Cục](#-bảng-tra-cứu-lệnh-cli-toàn-cục)
+8. [Tài Liệu Chi Tiết](#-tài-liệu-chi-tiết)
+
 ---
 
 ## 🎯 Tại sao bạn cần Agent QA Harness?
@@ -79,12 +95,11 @@ flowchart TD
 ### 1. Khởi tạo cấu hình cho dự án
 Đứng tại thư mục gốc của repository cần kiểm thử:
 ```bash
-# Tạo file cấu hình mẫu harness.config.json
-agent-harness init
+# Tự động quét và phát hiện các route, socket, mutation
+agent-harness discover
 ```
 
-### 2. Khai báo các kịch bản kiểm thử trong `harness.config.json`
-Chỉnh sửa file cấu hình phù hợp với dự án của bạn:
+### 2. Xem và tinh chỉnh file `harness.config.json`
 ```json
 {
   "project": "ten-du-an-cua-ban",
@@ -94,10 +109,7 @@ Chỉnh sửa file cấu hình phù hợp với dự án của bạn:
   "static": {
     "enabled": true,
     "commands": [
-      {
-        "name": "Kiểm tra UI Rules",
-        "cmd": "node scripts/verify-ui-rules.cjs"
-      }
+      { "name": "Kiểm tra UI Rules", "cmd": "node scripts/verify-ui-rules.cjs" }
     ]
   },
 
@@ -107,7 +119,6 @@ Chỉnh sửa file cấu hình phù hợp với dự án của bạn:
     "scenarios": [
       {
         "name": "kich-ban-khach-yeu-cau-le-tan-nhan",
-        "description": "Khách gửi yêu cầu -> Lễ tân phải nhận được event realtime ngay lập tức",
         "receiver": {
           "endpoint": "/hotel-ops",
           "auth": { "token": "Bearer test-jwt-token" },
@@ -129,14 +140,10 @@ Chỉnh sửa file cấu hình phù hợp với dự án của bạn:
     "scenarios": [
       {
         "name": "chong-duyet-trung-don-hang",
-        "description": "Bắn 5 request duyệt cùng lúc: Chỉ đúng 1 đơn thành công, 4 đơn còn lại phải bị từ chối",
         "path": "/api/v1/orders/ORD-001/approve",
         "method": "POST",
         "concurrentBurst": 5,
-        "assert": {
-          "expected200": 1,
-          "expectedConflictOrBad": 4
-        }
+        "assert": { "expected200": 1, "expectedConflictOrBad": 4 }
       }
     ]
   },
@@ -146,8 +153,7 @@ Chỉnh sửa file cấu hình phù hợp với dự án của bạn:
     "zeroConsoleErrors": true,
     "zeroNetworkErrors": true,
     "routes": [
-      { "path": "/dashboard", "waitForSelector": "[data-testid='metrics-board']" },
-      { "path": "/orders", "waitForSelector": "table" }
+      { "path": "/dashboard", "waitForSelector": "[data-testid='metrics-board']" }
     ],
     "flows": [
       {
@@ -178,43 +184,7 @@ agent-harness probe:browser        # Chỉ quét Route & Lỗi giao diện
 
 ## 🤖 Tích hợp Archon Workflow DAG
 
-Copy file template `templates/archon/universal-qa-harness.yaml` vào thư mục `.archon/workflows/` của dự án:
-
-```yaml
-name: universal-qa-harness
-description: Universal Multi-Project Autonomous QA Harness for Archon
-interactive: false
-
-nodes:
-  - id: check-config
-    bash: |
-      test -f harness.config.json || exit 1
-
-  # Chạy song song các làn kiểm thử
-  - id: lane-socket
-    bash: agent-harness --tier 1
-    depends_on: [check-config]
-
-  - id: lane-concurrency
-    bash: agent-harness --tier 2
-    depends_on: [check-config]
-
-  - id: lane-browser
-    bash: agent-harness --tier 3
-    depends_on: [check-config]
-
-  # Đánh giá kết quả
-  - id: evaluate
-    bash: |
-      if [ -f "harness-out/INCIDENT_PACK.json" ]; then
-        cat harness-out/INCIDENT_PACK.json
-        exit 1
-      fi
-      cat harness-out/HARNESS_REPORT.md
-    depends_on: [lane-socket, lane-concurrency, lane-browser]
-```
-
-Kích hoạt dễ dàng qua Archon:
+Copy file template `templates/archon/universal-qa-harness.yaml` vào thư mục `.archon/workflows/` của dự án, sau đó kích hoạt:
 ```bash
 archon run .archon/workflows/universal-qa-harness.yaml
 ```
@@ -246,14 +216,32 @@ Khi phát hiện lỗi ở bất kỳ tầng nào, Harness không chỉ báo `FA
 }
 ```
 
-Nhờ file chuẩn hóa này, các AI Agent có thể **tự động đọc hiểu, định vị file lỗi và sửa ngay lập tức** mà không cần con người phải ngồi debug thủ công.
+---
+
+## 📋 Bảng Tra Cứu Lệnh CLI Toàn Cục
+
+| Lệnh | Ý nghĩa & Mô tả |
+| :--- | :--- |
+| `agent-harness discover` | Tự động quét dự án, phát hiện routes, socket gateways, mutations và tạo config |
+| `agent-harness run` | Chạy toàn bộ quy trình kiểm thử 4 tầng và xuất báo cáo |
+| `agent-harness init` | Khởi tạo file cấu hình trắng `harness.config.json` |
+| `agent-harness add:flow <tên>` | Thêm hoặc nâng cấp kịch bản tương tác người dùng (UI Flow) |
+| `agent-harness add:socket <tên>` | Thêm hoặc nâng cấp kịch bản kiểm tra Realtime Socket |
+| `agent-harness add:concurrency <tên>` | Thêm hoặc nâng cấp kịch bản kiểm tra tranh chấp (chống duyệt trùng) |
+| `agent-harness probe:socket` | Chạy riêng rẽ Tier 1 (Realtime Socket Probe) |
+| `agent-harness probe:concurrency` | Chạy riêng rẽ Tier 2 (Concurrency Gate) |
+| `agent-harness probe:browser` | Chạy riêng rẽ Tier 3 (Chrome & Route Scanner) |
+| `agent-harness --tier <0\|1\|2\|3>` | Chạy một Tier cụ thể được chỉ định |
+| `agent-harness --config <path>` | Chỉ định file cấu hình tùy chỉnh ở đường dẫn khác |
 
 ---
 
-## 📖 Tài Liệu Tham Khảo Thêm
-- [Chi tiết Kiến trúc Hệ thống (ARCHITECTURE.md)](docs/ARCHITECTURE.md)
-- [Đặc tả toàn bộ trường cấu hình (CONFIG_SPEC.md)](docs/CONFIG_SPEC.md)
-- [Sổ tay hành động độc lập cho AI Agents (AGENT_PLAYBOOK.md)](docs/AGENT_PLAYBOOK.md)
+## 📚 Tài Liệu Chi Tiết
+
+- 📐 [**Kiến Trúc Toàn Diện Hệ Thống (ARCHITECTURE.md)**](docs/ARCHITECTURE.md): Phân tích chi tiết thuật toán 4 tầng kiểm thử, cơ chế đo độ trễ socket và burst concurrency.
+- ⚙️ [**Đặc Tả File Cấu Hình (CONFIG_SPEC.md)**](docs/CONFIG_SPEC.md): Bảng tra cứu toàn bộ tham số trong `harness.config.json`.
+- 🤖 [**Sổ Tay Hành Động Độc Lập Cho AI Agents (AGENT_PLAYBOOK.md)**](docs/AGENT_PLAYBOOK.md): Cẩm nang tự sửa lỗi và tương tác Chrome DevTools MCP dành cho Agent.
+- 📜 [**Quy Tắc Bắt Buộc Toàn Cục (AGENT_HARNESS_GLOBAL_RULE.md)**](rules/AGENT_HARNESS_GLOBAL_RULE.md): Khối quy tắc copy-paste dành cho `.agents/AGENTS.md`.
 
 ---
 

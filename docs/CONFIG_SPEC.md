@@ -1,57 +1,91 @@
-# `harness.config.json` Specification
+# Đặc Tả Cấu Hình Chi Tiết: `harness.config.json`
 
-Every repository using `agents-testing-with-workflow` configures its testing parameters via `harness.config.json` located at the project root.
-
----
-
-## Root Properties
-
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `project` | `string` | Directory name | Human-readable identifier for the target project. |
-| `baseUrl` | `string` | `"http://localhost:3000"` | Base URL of the running application server. |
-| `timeoutMs` | `number` | `30000` | Global execution timeout in milliseconds. |
-| `outputDir` | `string` | `"harness-out"` | Directory where summaries and incident packs are saved. |
-| `static` | `object` | `{}` | Tier 0 static verification rules. |
-| `realtime` | `object` | `{}` | Tier 1 realtime socket testing scenarios. |
-| `concurrency` | `object` | `{}` | Tier 2 concurrency burst scenarios. |
-| `browser` | `object` | `{}` | Tier 3 browser & route health checks. |
+> **Tài liệu tham chiếu toàn bộ các thuộc tính và kịch bản trong file cấu hình `harness.config.json`.**  
+> Mỗi repository sử dụng `agent-qa-harness` chỉ cần duy nhất file này ở thư mục gốc để quản lý toàn bộ các tầng kiểm thử.
 
 ---
 
-## 1. `static` Configuration
+## 1. Cấu Trúc Tổng Thể
+
+```json
+{
+  "$schema": "https://json.schemastore.org/harness.config.json",
+  "project": "ten-du-an",
+  "baseUrl": "http://localhost:3000",
+  "timeoutMs": 30000,
+  "outputDir": "harness-out",
+
+  "static": { ... },
+  "realtime": { ... },
+  "concurrency": { ... },
+  "browser": { ... }
+}
+```
+
+### Các Thuộc Tính Gốc (Root Properties)
+
+| Thuộc tính | Kiểu dữ liệu | Mặc định | Ý nghĩa & Mô tả |
+| :--- | :--- | :--- | :--- |
+| `project` | `string` | Tên thư mục | Tên định danh của dự án (hiển thị trên các báo cáo QA). |
+| `baseUrl` | `string` | `"http://localhost:3000"` | Địa chỉ gốc của server đang chạy (Next.js, NestJS, Express, FastAPI...). |
+| `timeoutMs` | `number` | `30000` | Thời gian timeout tối đa cho mỗi lệnh kiểm thử (mili-giây). |
+| `outputDir` | `string` | `"harness-out"` | Thư mục lưu trữ kết quả kiểm thử, ảnh chụp màn hình và gói sự cố `INCIDENT_PACK.json`. |
+| `static` | `object` | `{ enabled: true }` | Cấu hình kiểm tra tĩnh Tier 0 (UI rules, ESLint, Zod contracts, Typecheck). |
+| `realtime` | `object` | `{ enabled: false }` | Cấu hình kiểm tra Realtime Socket Tier 1 (Socket.io hoặc Native WebSocket). |
+| `concurrency` | `object` | `{ enabled: false }` | Cấu hình kiểm tra tranh chấp / Race Condition Tier 2 (Duyệt đơn, thanh toán). |
+| `browser` | `object` | `{ enabled: false }` | Cấu hình kiểm tra giao diện và kịch bản người dùng Tier 3 (Chrome / Web). |
+
+---
+
+## 2. Chi Tiết `static` (Tier 0: Static & Contract Gate)
+
+Dùng để chạy các lệnh kiểm tra tĩnh đặc thù của dự án (như kiểm tra quy chuẩn UI, quét lỗi chính tả, typecheck).
 
 ```json
 "static": {
   "enabled": true,
   "commands": [
     {
-      "name": "UI Rules",
+      "name": "Kiểm tra UI Rules & Sàn Cỡ Chữ",
       "cmd": "node scripts/verify-ui-rules.cjs"
     },
     {
-      "name": "Contract Check",
+      "name": "Kiểm tra Tính Đồng Bộ Zod Contract",
       "cmd": "npm run test:contracts"
+    },
+    {
+      "name": "TypeScript Typecheck",
+      "cmd": "npx tsc --noEmit"
     }
   ]
 }
 ```
 
+- `commands[].name`: Tên dễ đọc của bài kiểm tra.
+- `commands[].cmd`: Câu lệnh shell thực tế sẽ được chạy trong thư mục gốc của repo.
+
 ---
 
-## 2. `realtime` Configuration
+## 3. Chi Tiết `realtime` (Tier 1: Socket & Realtime Probe)
+
+Dùng để kiểm tra kết nối realtime, handshake, phân lập phòng (`rooms`), và độ trễ nhận tin.
 
 ```json
 "realtime": {
   "enabled": true,
-  "provider": "socket.io", // "socket.io" | "ws"
+  "provider": "socket.io", // "socket.io" hoặc "ws"
   "scenarios": [
     {
-      "name": "guest-request-roundtrip",
-      "description": "Verifies that guest requests emit REQUEST_CREATED to staff",
+      "name": "khach-tao-yeu-cau-le-tan-nhan",
+      "description": "Khi khách tạo yêu cầu dịch vụ, socket lễ tân phải nhận được REQUEST_CREATED trong 3s",
       "receiver": {
-        "endpoint": "/staff-ops",
-        "auth": { "token": "Bearer test-jwt-token" },
+        "endpoint": "/hotel-ops",
+        "auth": {
+          "token": "Bearer eyJhbGciOi...",
+          "role": "RECEPTIONIST",
+          "hotelId": "hotel-test-01"
+        },
+        "query": { "transport": "polling" },
         "listenEvent": "REQUEST_CREATED",
         "assertPayload": {
           "status": "PENDING"
@@ -61,28 +95,53 @@ Every repository using `agents-testing-with-workflow` configures its testing par
         "type": "http",
         "method": "POST",
         "path": "/api/v1/guest/requests",
-        "body": { "serviceId": "towels", "roomId": "101" }
+        "headers": {
+          "Authorization": "Bearer guest-jwt-token"
+        },
+        "body": {
+          "serviceId": "laundry",
+          "roomId": "room-102"
+        }
       },
-      "timeoutMs": 4000
+      "timeoutMs": 3000
     }
   ]
 }
 ```
 
+### Các trường trong `receiver`:
+- `endpoint`: Đường dẫn namespace hoặc gateway Socket (ví dụ: `/hotel-ops`, `/chat`).
+- `auth`: Dữ liệu xác thực được gửi kèm trong WebSocket handshake (`auth` payload của Socket.io).
+- `listenEvent`: Tên sự kiện cần lắng nghe (`REQUEST_CREATED`, `ORDER_PAID`, `NEW_MESSAGE`).
+- `assertPayload`: *(Tùy chọn)* Cặp key-value bắt buộc phải có trong dữ liệu nhận về.
+
+### Các trường trong `trigger`:
+- `type`: Hiện tại hỗ trợ `"http"` (bắn API kích hoạt sự kiện).
+- `method`: Phương thức HTTP (`POST`, `PUT`, `PATCH`).
+- `path`: Đường dẫn API kích hoạt sự kiện.
+- `body`: Dữ liệu gửi lên API.
+
 ---
 
-## 3. `concurrency` Configuration
+## 4. Chi Tiết `concurrency` (Tier 2: Concurrency & State Invariants)
+
+Dùng để bắn các đợt request song song nhằm kiểm tra cơ chế khóa (Mutex, Database Transaction Lock, Idempotency).
 
 ```json
 "concurrency": {
   "enabled": true,
   "scenarios": [
     {
-      "name": "prevent-double-approval",
-      "description": "Fires simultaneous requests to ensure single-winner semantics",
-      "path": "/api/v1/orders/1/approve",
+      "name": "chong-duyet-trung-don-hang",
+      "description": "Bắn 5 request duyệt đồng thời cho 1 đơn hàng - chỉ đúng 1 thành công",
+      "path": "/api/v1/orders/ORD-999/approve",
       "method": "POST",
+      "headers": {
+        "Authorization": "Bearer admin-token"
+      },
+      "body": { "approvedBy": "manager-1" },
       "concurrentBurst": 5,
+      "injectRequestId": true,
       "assert": {
         "expected200": 1,
         "expectedConflictOrBad": 4
@@ -92,9 +151,17 @@ Every repository using `agents-testing-with-workflow` configures its testing par
 }
 ```
 
+### Các trường quan trọng:
+- `concurrentBurst`: Số lượng request được bắn đồng thời trong cùng một micro-giây (khuyên dùng: 5 đến 10).
+- `injectRequestId`: Nếu `true`, hệ thống sẽ tự sinh header `X-Client-Request-Id` ngẫu nhiên cho từng request trong đợt burst.
+- `assert.expected200`: Số lượng request thành công mong đợi (thường là `1` để đảm bảo tính duy nhất).
+- `assert.expectedConflictOrBad`: Số lượng request bị từ chối mong đợi (trả về `409 Conflict` hoặc `400 Bad Request`).
+
 ---
 
-## 4. `browser` Configuration
+## 5. Chi Tiết `browser` (Tier 3: Browser & UI Action Flows)
+
+Dùng để kiểm tra tính ổn định của giao diện, bắt sạch lỗi console, network ngầm và chạy chuỗi hành động của người dùng.
 
 ```json
 "browser": {
@@ -102,8 +169,35 @@ Every repository using `agents-testing-with-workflow` configures its testing par
   "zeroConsoleErrors": true,
   "zeroNetworkErrors": true,
   "routes": [
-    { "path": "/dashboard", "waitForSelector": "[data-testid='kpi-board']" },
+    { "path": "/dashboard", "waitForSelector": "[data-testid='metrics-board']" },
     { "path": "/rooms", "waitForSelector": "table" }
+  ],
+  "flows": [
+    {
+      "name": "dang-nhap-va-mo-danh-sach-phong",
+      "description": "Đăng nhập và kiểm tra mở màn hình quản lý phòng trơn tru",
+      "steps": [
+        { "action": "navigate", "url": "/login" },
+        { "action": "fill", "selector": "input[name='email']", "value": "admin@vietsage.vn" },
+        { "action": "fill", "selector": "input[name='password']", "value": "secret123" },
+        { "action": "click", "selector": "button[type='submit']" },
+        { "action": "waitFor", "durationMs": 500 },
+        { "action": "assertText", "selector": "h1", "expected": "Bảng Điều Khiển" },
+        { "action": "assertNoErrors" },
+        { "action": "screenshot", "name": "dashboard-thanh-cong.png" }
+      ]
+    }
   ]
 }
 ```
+
+### Các hành động hỗ trợ trong `steps[]`:
+| Action | Thuộc tính đi kèm | Mô tả |
+| :--- | :--- | :--- |
+| `navigate` | `url` | Điều hướng đến đường dẫn (tương đối hoặc tuyệt đối). |
+| `fill` | `selector`, `value` | Điền giá trị vào trường input / textarea. |
+| `click` | `selector` | Nhấp chuột vào nút bấm, liên kết hoặc phần tử. |
+| `waitFor` | `durationMs` hoặc `selector` | Chờ đợi trong số mili-giây hoặc chờ phần tử xuất hiện trong DOM. |
+| `assertText` | `selector`, `expected` | Khẳng định nội dung văn bản của phần tử phải chứa giá trị mong đợi. |
+| `assertNoErrors` | *(Không cần)* | Kiểm tra nghiêm ngặt: Console phải có 0 lỗi đỏ và Network không có mã 4xx/5xx. |
+| `screenshot` | `name` | Chụp ảnh màn hình lưu vào `harness-out/screenshots/<name>`. |
