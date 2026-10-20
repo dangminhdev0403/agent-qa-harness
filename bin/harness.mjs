@@ -5,6 +5,7 @@ import path from 'node:path';
 import { executeHarness } from '../src/index.mjs';
 import { appendScenario, syncDiscoveredToConfig } from '../src/core/scenario-builder.mjs';
 import { autoDiscoverProject } from '../src/core/auto-discover.mjs';
+import { IsolationManager } from '../src/core/isolation-manager.mjs';
 
 const args = process.argv.slice(2);
 const command = args[0] || 'run';
@@ -31,9 +32,11 @@ CÁC LỆNH TỰ ĐỘNG HÓA & TIỆN ÍCH:
   probe:concurrency    Chỉ chạy Tier 2 (Kiểm tra tranh chấp Concurrency & Idempotency)
   probe:browser        Chỉ chạy Tier 3 (Kiểm tra Route trình duyệt & Lỗi Console)
 
-TÙY CHỌN:
+TÙY CHỌN BẢO VỆ & AN TOÀN:
   --auto-start         Tự động khởi động máy chủ bằng START (npm run start) nếu chưa chạy (TUYỆT ĐỐI KHÔNG CHẠY DEV)
   --no-kill            Giữ nguyên máy chủ tiếp tục chạy sau khi test xong (không kill process)
+  --isolate-branch     TỰ ĐỘNG TÁCH NHÁNH GIT CÔ LẬP ('harness-fix/...') khi có lỗi để tránh xung đột giữa 2 agents
+  --max-retries <n>    Giới hạn số lần thử sửa lỗi tự động (Mặc định: 3, ngắt mạch chống vòng lặp vô tận)
   --mode <code|flow|all> Chọn chế độ thực thi (mặc định: all)
   --config <đường_dẫn>   Chỉ định file cấu hình harness.config.json tùy chỉnh
   --tier <0|1|2|3>       Chỉ chạy một Tier cụ thể
@@ -176,18 +179,36 @@ async function main() {
     tier = '3';
   }
 
+  let maxRetries = 3;
+  const maxRetriesIdx = args.indexOf('--max-retries');
+  if (maxRetriesIdx !== -1 && args[maxRetriesIdx + 1]) {
+    maxRetries = parseInt(args[maxRetriesIdx + 1], 10) || 3;
+  }
+
   const autoStart = args.includes('--auto-start');
   const noKill = args.includes('--no-kill');
+  const isolateBranch = args.includes('--isolate-branch');
 
   try {
-    const { overallPassed } = await executeHarness({
+    const { overallPassed, circuitBreakerTripped } = await executeHarness({
       cwd: process.cwd(),
       configPath,
       tier,
       mode,
       autoStart,
-      noKill
+      noKill,
+      maxRemediationAttempts: maxRetries
     });
+
+    if (!overallPassed && isolateBranch) {
+      const isolationManager = new IsolationManager(process.cwd(), path.join(process.cwd(), 'harness-out'));
+      await isolationManager.createIsolatedBranch('agent-fix');
+    }
+
+    if (circuitBreakerTripped) {
+      console.error(`\n[DỪNG THỰC THI] Vòng lặp sửa code đã bị ngắt bởi Circuit Breaker (Quá ${maxRetries} lần thử).`);
+      process.exit(2);
+    }
 
     process.exit(overallPassed ? 0 : 1);
   } catch (err) {

@@ -62,6 +62,23 @@
 
 Khi lệnh `agent-harness run` trả về Exit Code `1`, Agent **TUYỆT ĐỐI KHÔNG** dừng lại để hỏi User. Agent mở file `harness-out/INCIDENT_PACK.json` và tra cứu danh mục chẩn đoán dưới đây:
 
+### 🛡️ QUY TẮC CÔ LẬP NHÁNH & CHỐNG VÒNG LẶP VĨNH VIỄN (Multi-Agent Conflict Guard)
+
+Khi có từ 2 Agents hoặc 2 task cùng chạy song song:
+1. **Phát Hiện Dấu Hiệu Trùng Lặp**:
+   - Nếu trong `INCIDENT_PACK.json` có trường `"circuitBreakerTripped": true`:
+     - **BẮT BUỘC DỪNG NGAY LẬP TỨC!** Đã quá 3 lần thử tự động sửa code nhưng lỗi vẫn lặp lại.
+     - Không cố chấp sửa tiếp để tránh tạo ra vòng lặp sửa code vĩnh viễn (Infinite Editing Ping-Pong) giữa 2 Agents.
+     - Báo cáo rõ ràng: *"Đã thử sửa 3 lần nhưng không thành công do xung đột kiến trúc/logic. Cần User xem xét."*
+2. **Tự Động Tách Nhánh Cô Lập (Branch Isolation)**:
+   - Khi sửa lỗi, Agent chủ động chạy:
+     ```bash
+     git checkout -b harness-fix/<tính-năng>-<timestamp>
+     ```
+   - Chỉnh sửa trên nhánh cô lập này, chạy test xác nhận pass rồi mới tạo Pull Request hoặc merge về nhánh chính. Tuyệt đối không sửa thẳng lên nhánh `master`/`main` khi có nghi vấn agent khác đang sửa cùng file!
+
+---
+
 ### 🔴 Sự cố Tier 0: Static & Contract Gate Thất Bại
 - **Dấu hiệu**: Báo lỗi cỡ chữ `< 12px`, thiếu `text-balance` trên tiêu đề, hoặc Zod schema không khớp với payload.
 - **Cách Agent tự sửa**:

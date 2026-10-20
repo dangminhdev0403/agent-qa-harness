@@ -236,6 +236,8 @@ Khi phát hiện lỗi ở bất kỳ tầng nào, Harness không chỉ báo `FA
 | `agent-harness discover` | Tự động quét dự án, phát hiện routes, socket gateways, mutations và tạo config |
 | `agent-harness run` | Chạy toàn bộ quy trình kiểm thử 4 tầng và xuất báo cáo |
 | `agent-harness run --auto-start` | Tự động khởi động máy chủ bằng lệnh `START` (npm run start) nếu chưa chạy (TUYỆT ĐỐI KHÔNG CHẠY `DEV`) |
+| `agent-harness run --isolate-branch` | Tự động tách nhánh Git cô lập (`harness-fix/...`) khi phát hiện lỗi để tránh xung đột giữa 2 agents |
+| `agent-harness run --max-retries <n>` | Giới hạn số lần thử sửa code tự động (Mặc định: 3, ngắt mạch chống vòng lặp vô tận) |
 | `agent-harness init` | Khởi tạo file cấu hình trắng `harness.config.json` |
 | `agent-harness add:flow <tên>` | Thêm hoặc nâng cấp kịch bản tương tác người dùng (UI Flow) |
 | `agent-harness add:socket <tên>` | Thêm hoặc nâng cấp kịch bản kiểm tra Realtime Socket |
