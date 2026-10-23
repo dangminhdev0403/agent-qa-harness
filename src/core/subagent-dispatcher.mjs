@@ -2,7 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { HARNESS_MODULES, partitionRoutesByModule } from './module-registry.mjs';
 import { resolveDynamicRoute } from './prerequisite-inspector.mjs';
-import { UNIVERSAL_INTERACTIVE_JOURNEYS, listJourneysForRole, generateChromeMCPInstructions } from './journey-registry.mjs';
+import {
+  CANONICAL_ACCOUNT_CATALOG,
+  UNIVERSAL_INTERACTIVE_JOURNEYS,
+  listJourneysForRole,
+  generateStepByStepGuide
+} from './journey-registry.mjs';
 
 /**
  * Subagent Dispatcher - Prepares optimized swarm subagent execution plans
@@ -53,20 +58,26 @@ export class SubagentDispatcher {
   }
 
   /**
-   * Generates a parallel 2-worker subagent dispatch plan with full browser & workspace isolation
+   * Generates Dual-Pass Parallel Swarm Plan
    */
-  generateParallelPlan() {
+  generateDualPassPlan() {
     const config = this.getConfig() || {};
     const projectName = config.project || path.basename(this.cwd);
-    const windowSessionId = this.generateWindowSessionId('ui');
-    const initialUrl = config.baseUrl || "http://localhost:3000";
+    const windowSessionId = this.generateWindowSessionId('dualpass');
 
     const codeWorker = {
       TypeName: "self",
       Role: "QA Code Gatekeeper",
       Model: "flash",
       Workspace: "inherit",
-      Prompt: `Execute Mode 1 QA Code and Stability verification for project "${projectName}". Run command \`agent-harness test:code --auto-start\`. Verify Tier 0 (static rules, build, types, UI constraints), Tier 1 (realtime socket connections), and Tier 2 (concurrency and race condition prevention). Return a concise summary of results and exit status. If tests fail, report the exact failing tier and exit.`
+      Prompt: `Execute fast static, socket, and concurrency verification gates for project "${projectName}".
+RUN COMMAND IN SEQUENCE:
+1. \`agent-harness test:code --auto-start\`
+2. Verify:
+   - Tier 0 (static rules, font floor >= 12px, text-balance) passes with 0 errors.
+   - Tier 1 (realtime socket probe) confirms event dispatch within 3000ms.
+   - Tier 2 (concurrency gate) passes with strict idempotency (0 double bookings / duplicate mutations).
+3. Report concise results summary to coordinator.`
     };
 
     const flowWorker = {
@@ -74,19 +85,18 @@ export class SubagentDispatcher {
       Role: "QA Flow Inspector",
       Model: "inherit",
       Workspace: "inherit",
-      Prompt: `Execute Mode 2 QA Flow and Browser UI verification for project "${projectName}" on a DEDICATED ISOLATED CHROME WINDOW.
-
-MANDATORY CHROME WINDOW ISOLATION PROTOCOL:
-1. WINDOW CREATION: DO NOT hijack any existing tab or shared window. Call chrome-devtools-mcp tool \`new_page\` with url: "${initialUrl}" to launch a completely dedicated, isolated browser window. Record the returned page target ID.
-2. TARGET BINDING: Ensure all subsequent chrome-devtools-mcp tool calls (\`select_page\`, \`navigate_page\`, \`click\`, \`fill\`, \`list_console_messages\`, \`list_network_requests\`, \`take_screenshot\`) are strictly targeted to this dedicated page.
-3. VERIFICATION GATES:
-   - Zero console errors (\`list_console_messages\` -> no errors/unhandled rejections/React hydration mismatches).
-   - Zero network 4xx/5xx failures (\`list_network_requests\` -> all background API/XHR requests must succeed).
-   - Verify In-Place Tab Isolation: Actions must execute in modals/drawers without disruptive cross-tab redirects.
-   - Capture screenshots into harness-out/screenshots/${windowSessionId}/.
-4. CLEAN TEARDOWN: When finished (whether PASS or FAIL), ALWAYS call \`close_page\` on your dedicated target ID to close your window and prevent orphaned tab leaks.
-5. Command alternative: You may also run \`agent-harness test:flow\` to execute the automated flow scanner.
-
+      WindowSession: windowSessionId,
+      Prompt: `Execute autonomous Chrome interactive browser flows for project "${projectName}".
+MANDATORY CHROME ISOLATION PROTOCOL:
+1. Spawn dedicated Chrome target: \`new_page(url: "${config.baseUrl || 'http://localhost:3000'}")\` and capture \`pageId\`.
+2. Bind active operations: \`select_page(pageId)\`.
+3. Run browser flows:
+   - Execute all declared user journeys in harness.config.json.
+   - Assert ZERO console error level messages (\`list_console_messages\`).
+   - Assert ZERO network 4xx/5xx responses (\`list_network_requests\`).
+   - Verify In-Place Tab Isolation (drawers/modals open in-place, zero cross-tab redirect).
+4. Save checkpoint screenshot to harness-out/screenshots/${windowSessionId}/flow-checkpoint.png.
+5. CLEAN TEARDOWN: Always call \`close_page(pageId)\` upon completion (PASS or FAIL).
 Window Session Tag: ${windowSessionId}`
     };
 
@@ -99,8 +109,8 @@ Window Session Tag: ${windowSessionId}`
   }
 
   /**
-   * Generates a Multi-Persona Swarm Plan (Guest vs Receptionist vs Hotel Owner)
-   * Each persona operates in a DEDICATED Chrome window with distinct credentials and role responsibilities.
+   * Generates a Multi-Persona Swarm Plan with Full Closed-Loop Business Coordination
+   * (Guest In-Room -> Receptionist Approval -> Housekeeping Clean -> Hotel Owner ARI)
    */
   generatePersonaSwarmPlan() {
     const config = this.getConfig() || {};
@@ -109,107 +119,166 @@ Window Session Tag: ${windowSessionId}`
 
     const guestSession = this.generateWindowSessionId('guest');
     const receptionistSession = this.generateWindowSessionId('receptionist');
+    const housekeepingSession = this.generateWindowSessionId('housekeeping');
     const ownerSession = this.generateWindowSessionId('owner');
     const fixtures = config.fixtures || {};
     const qrCode = fixtures.qrCode || 'DEMO_QR_ROOM_101';
     const hotelId = fixtures.hotelId || 'HCA_HOMESTAY';
 
-    const receptionistAuth = config.personas?.frontdesk?.auth || config.personas?.frontdesk;
-    const ownerAuth = config.personas?.owner?.auth || config.personas?.owner;
-
+    // 1. Worker Khách Lưu Trú (Guest In-Room)
     const guestWorker = {
       TypeName: "self",
-      Role: "QA Guest In-Room Journey",
+      Role: "QA Guest In-Room Persona",
       Model: "inherit",
       Workspace: "inherit",
       WindowSession: guestSession,
-      Prompt: `Act as a Guest staying in room (Khách lưu trú phòng QR) testing end-to-end journey in "${projectName}".
-OPERATE ON DEDICATED CHROME WINDOW:
-1. Call \`new_page(url: "${baseUrl}/g/${qrCode}", isolatedContext: "${guestSession}")\` to spawn your dedicated Guest window.
-2. INTERACTIVE UI ACTIONS:
-   - Navigate to /g/services or /g/requests.
-   - Click service card / button (e.g. "Gọi khăn tắm" or "Dọn phòng").
-   - Fill note input with: "Khách phòng ${qrCode} yêu cầu 2 khăn tắm (Test lúc ${new Date().toLocaleTimeString()})".
-   - Click Submit button.
-3. VERIFICATION:
-   - Assert confirmation toast / order code returned.
-   - Assert 0 console errors, 0 network 4xx/5xx failures.
-4. Capture screenshot to harness-out/screenshots/${guestSession}/guest-request-sent.png.
-5. Call \`close_page\` when done. Report request ID to coordinator.`
+      AccountInfo: CANONICAL_ACCOUNT_CATALOG.GUEST,
+      Prompt: `Act as a Guest staying in room (Khách lưu trú quét mã QR phòng) testing end-to-end journey in "${projectName}".
+
+TÀI KHOẢN & TRUY CẬP:
+- Không cần đăng nhập tài khoản.
+- URL bắt đầu: "${baseUrl}/g/${qrCode}"
+- Cửa sổ cách ly: "${guestSession}"
+
+CÁC BƯỚC THAO TÁC CỤ THỂ (CLICK VÀO ĐÂU, ĐIỀN CÁI GÌ):
+1. KHỞI TẠO CỬA SỔ: Gọi \`new_page(url: "${baseUrl}/g/${qrCode}", isolatedContext: "${guestSession}")\` -> lưu \`pageId\`.
+2. CHỌN DỊCH VỤ:
+   - Gọi \`take_snapshot(pageId)\` tìm các nút điều hướng.
+   - Click menu "Dịch vụ buồng phòng" (link hoặc button có text 'Dịch vụ').
+   - Click nút "Yêu cầu" hoặc "Đặt" trên thẻ dịch vụ 'Khăn tắm bổ sung' (hoặc dịch vụ đầu tiên).
+3. ĐIỀN FORM YÊU CẦU:
+   - Gọi \`fill(pageId, uid_ghichu, "Yêu cầu 2 khăn tắm bổ sung cho phòng ${qrCode} (Test tự động lúc ${new Date().toLocaleTimeString()})")\`.
+   - Click nút "Gửi yêu cầu" (button[type='submit'] hoặc text 'Gửi yêu cầu').
+4. XÁC NHẬN TRẠNG THÁI BAN ĐẦU:
+   - Kiểm tra xuất hiện mã đơn (REQ-...) và trạng thái ban đầu là "Chờ tiếp nhận".
+   - GIỮ NGUYÊN CỬA SỔ NÀY (chưa đóng) để đón nhận tín hiệu WebSocket realtime từ Lễ tân!
+5. ĐÓN NHẬN REALTIME TỪ LỄ TÂN:
+   - Khi Lễ tân bấm "Tiếp nhận" ở cửa sổ bên kia: Kiểm tra màn hình khách tự động cập nhật sang "Đang xử lý (Lễ tân đã tiếp nhận)" mà KHÔNG reload trang (Zero Page Reload).
+   - Khi Lễ tân bấm "Hoàn thành": Kiểm tra giao diện khách cập nhật sang "Đã hoàn thành".
+6. KẾT THÚC & DỌN DẸP:
+   - Chụp ảnh màn hình lưu vào: harness-out/screenshots/${guestSession}/guest-closed-loop.png.
+   - Gọi \`close_page(pageId)\`. Báo cáo kết quả luồng khách cho coordinator.`
     };
 
+    // 2. Worker Lễ Tân Khách Sạn (Frontdesk Receptionist)
     const receptionistWorker = {
       TypeName: "self",
-      Role: "QA Frontdesk Ops Journey",
+      Role: "QA Frontdesk Ops Persona",
       Model: "inherit",
       Workspace: "inherit",
       WindowSession: receptionistSession,
-      Prompt: `Act as a Frontdesk Receptionist (Lễ tân khách sạn) testing end-to-end journey in "${projectName}".
-AUTHENTICATION:
-- Login at "${baseUrl}/dangnhap" if prompted.
-- Credentials: Username="${receptionistAuth?.username || receptionistAuth?.email || 'frontdesk@vietsage.vn'}", Password="${receptionistAuth?.password || 'Admin@123'}".
+      AccountInfo: CANONICAL_ACCOUNT_CATALOG.FRONTDESK,
+      Prompt: `Act as a Frontdesk Receptionist (Lễ tân khách sạn) testing closed-loop request handling in "${projectName}".
 
-OPERATE ON DEDICATED CHROME WINDOW:
-1. Call \`new_page(url: "${baseUrl}/staff/front-desk", isolatedContext: "${receptionistSession}")\` (or /hotels/${hotelId}/requests).
-2. REALTIME RECEIVE & APPROVAL INTERACTION:
-   - Wait for the incoming room request created by Guest.
-   - Locate the request card on the board.
-   - Click "Tiếp nhận" or "Duyệt" button.
-   - Verify status pill transitions cleanly (e.g. Chờ xử lý -> Đang xử lý) in-place without page reload.
-3. VERIFICATION:
-   - Assert 0 console errors, 0 network 4xx/5xx failures.
-   - Verify in-place tab isolation (actions execute in drawer/modal, zero disruptive cross-tab redirects).
-4. Capture screenshot to harness-out/screenshots/${receptionistSession}/receptionist-approved.png.
-5. Call \`close_page\` when done. Report approval status.`
+TÀI KHOẢN & ĐĂNG NHẬP:
+- URL Đăng nhập: "${baseUrl}/dangnhap"
+- Email / Tên đăng nhập: "frontdesk@vietsage.vn"
+- Mật khẩu: "Admin@123"
+- Cửa sổ cách ly: "${receptionistSession}"
+
+CÁC BƯỚC THAO TÁC CỤ THỂ (CLICK VÀO ĐÂU, DUYỆT CÁI GÌ):
+1. KHỞI TẠO CỬA SỔ & ĐĂNG NHẬP:
+   - Gọi \`new_page(url: "${baseUrl}/dangnhap", isolatedContext: "${receptionistSession}")\` -> lưu \`pageId\`.
+   - Gọi \`take_snapshot(pageId)\`, điền ô email "frontdesk@vietsage.vn", điền ô mật khẩu "Admin@123".
+   - Click nút "Đăng nhập" và đợi chuyển hướng.
+2. VÀO BẢNG ĐIỀU PHỐI LỄ TÂN:
+   - Điều hướng hoặc mở URL: "${baseUrl}/staff/front-desk" (hoặc /hotels/${hotelId}/requests).
+   - Lắng nghe sự kiện WebSocket realtime khi Khách vừa tạo yêu cầu.
+3. TIẾP NHẬN YÊU CẦU PHÒNG:
+   - Gọi \`take_snapshot(pageId)\`, xác định thẻ yêu cầu mới của phòng ${qrCode}.
+   - Click vào thẻ yêu cầu -> Xác nhận Drawer chi tiết trượt ra tại chỗ (In-Place Tab Isolation: không reload).
+   - Click nút "Tiếp nhận" (hoặc "Duyệt") -> Xác nhận badge trạng thái chuyển sang "Đang xử lý".
+4. HOÀN TẤT YÊU CẦU:
+   - Đợi 2 giây, click nút "Hoàn thành" (hoặc "Đã xử lý") -> Xác nhận đơn đóng thành công.
+5. CHECK-IN / CHECK-OUT PHÒNG:
+   - Tại sơ đồ phòng, click một phòng đang có khách -> Bấm "Trả phòng" để chuyển trạng thái sang PROCESSING (Chờ buồng phòng dọn).
+6. KẾT THÚC & DỌN DẸP:
+   - Chụp ảnh màn hình lưu vào: harness-out/screenshots/${receptionistSession}/receptionist-approved.png.
+   - Gọi \`close_page(pageId)\`. Báo cáo kết quả duyệt yêu cầu cho coordinator.`
     };
 
+    // 3. Worker Buồng Phòng (Housekeeping Staff)
+    const housekeepingWorker = {
+      TypeName: "self",
+      Role: "QA Housekeeping Ops Persona",
+      Model: "inherit",
+      Workspace: "inherit",
+      WindowSession: housekeepingSession,
+      AccountInfo: CANONICAL_ACCOUNT_CATALOG.HOUSEKEEPING,
+      Prompt: `Act as a Housekeeping Staff (Nhân viên buồng phòng) testing room cleaning workflow in "${projectName}".
+
+TÀI KHOẢN & ĐĂNG NHẬP:
+- URL Đăng nhập: "${baseUrl}/dangnhap"
+- Email / Tên đăng nhập: "housekeeping@vietsage.vn"
+- Mật khẩu: "Admin@123"
+- Cửa sổ cách ly: "${housekeepingSession}"
+
+CÁC BƯỚC THAO TÁC CỤ THỂ (CLICK VÀO ĐÂU, XÁC NHẬN CÁI GÌ):
+1. KHỞI TẠO CỬA SỔ & ĐĂNG NHẬP:
+   - Gọi \`new_page(url: "${baseUrl}/dangnhap", isolatedContext: "${housekeepingSession}")\` -> lưu \`pageId\`.
+   - Điền email "housekeeping@vietsage.vn", mật khẩu "Admin@123", click "Đăng nhập".
+2. VÀO MÀN HÌNH SƠ ĐỒ BUỒNG PHÒNG:
+   - Điều hướng đến: "${baseUrl}/hotels/${hotelId}/rooms" (hoặc giao diện buồng phòng).
+   - Gọi \`take_snapshot(pageId)\`, tìm các phòng có trạng thái 'PROCESSING' (Đang chờ dọn dẹp).
+3. TIẾN HÀNH DỌN PHÒNG & XÁC NHẬN SẴN SÀNG:
+   - Click chọn phòng cần dọn.
+   - Click nút "Bắt đầu dọn" (nếu có).
+   - Click nút "Xác nhận phòng sẵn sàng (Room Ready)".
+   - Xác nhận phòng chuyển sang màu xanh / trạng thái 'AVAILABLE' (Sẵn sàng đón khách mới).
+4. KẾT THÚC & DỌN DẸP:
+   - Chụp ảnh màn hình lưu vào: harness-out/screenshots/${housekeepingSession}/room-ready.png.
+   - Gọi \`close_page(pageId)\`. Báo cáo trạng thái phòng sạch cho coordinator.`
+    };
+
+    // 4. Worker Chủ Khách Sạn (Hotel Owner / Channel Manager)
     const ownerWorker = {
       TypeName: "self",
       Role: "QA Hotel Owner Audit Journey",
       Model: "inherit",
       Workspace: "inherit",
       WindowSession: ownerSession,
-      Prompt: `Act as a Hotel Owner (Chủ khách sạn) testing management flows in "${projectName}".
-AUTHENTICATION:
-- Login at "${baseUrl}/dangnhap" if prompted.
-- Credentials: Username="${ownerAuth?.username || ownerAuth?.email || 'thucvn@gmail.com'}", Password="${ownerAuth?.password || 'Admin@123'}".
+      AccountInfo: CANONICAL_ACCOUNT_CATALOG.OWNER,
+      Prompt: `Act as a Hotel Owner (Chủ khách sạn) testing inventory & ARI channel manager flows in "${projectName}".
 
-OPERATE ON DEDICATED CHROME WINDOW:
-1. Call \`new_page(url: "${baseUrl}/owner/dashboard", isolatedContext: "${ownerSession}")\` and save \`pageId\`.
-2. DEEP DOM INTERACTION & CRUD OPERATIONS (STRICTLY FORBIDDEN TO JUST "GET LINKS"):
-   a. Batch Price & Allocation Modal (In-Place Dialog):
-      - Navigate to "${baseUrl}/owner/hotels/${hotelId}/channel-manager".
-      - Call \`take_snapshot(pageId)\`, locate and click button "Cập nhật hàng loạt".
-      - Verify modal dialog opens in-place without page navigation.
-      - Click "Chọn tất cả hạng phòng hợp lệ".
-      - Call \`fill(pageId, price_uid, "2500000")\` to input new price.
-      - Click button "Hủy bỏ" or "Áp dụng cập nhật" to close modal in-place.
-   b. Inline Cell Editing & Status Toggle (Zero-Disruptive Auto-Save):
-      - Locate an inline cell (e.g. "Đóng bán Single Room, ngày ...").
-      - Call \`click(pageId, toggle_uid)\` -> verify status flips to "Đang đóng bán" in-place.
-      - Click again to restore "Đang mở bán".
-      - Click an inline price cell (e.g. "2.100.000 ₫") -> assert focused textbox appears.
-   c. Drag-and-Drop Floor Plan / Tape Chart (@dnd-kit):
-      - In Room Grid / Tape Chart, locate draggable reservation block (\`from_uid\`) and destination slot (\`to_uid\`).
-      - Call \`drag(pageId, from_uid, to_uid)\`.
-      - Assert reservation shifts slot smoothly without page reload.
-3. FIX VS NO-FIX BOUNDARIES:
-   - Do NOT touch database or alter RBAC guards (report-only).
-   - In-place fix allowed for notification copy, click handlers, or contract keys.
-4. Capture screenshot to harness-out/screenshots/${ownerSession}/owner-audit.png.
-5. Call \`close_page\` when done. Report management overview.`
+TÀI KHOẢN & ĐĂNG NHẬP:
+- URL Đăng nhập: "${baseUrl}/dangnhap"
+- Email / Tên đăng nhập: "thucvn@gmail.com" (hoặc "tenant@vietsage.vn")
+- Mật khẩu: "Admin@123"
+- Cửa sổ cách ly: "${ownerSession}"
+
+CÁC BƯỚC THAO TÁC CỤ THỂ (CLICK VÀO ĐÂU, CẬP NHẬT CÁI GÌ):
+1. KHỞI TẠO CỬA SỔ & ĐĂNG NHẬP:
+   - Gọi \`new_page(url: "${baseUrl}/dangnhap", isolatedContext: "${ownerSession}")\` -> lưu \`pageId\`.
+   - Điền email "thucvn@gmail.com" (hoặc "tenant@vietsage.vn"), mật khẩu "Admin@123", click "Đăng nhập".
+2. THAO TÁC MODAL CẬP NHẬT HÀNG LOẠT:
+   - Điều hướng đến "${baseUrl}/owner/hotels/${hotelId}/channel-manager".
+   - Gọi \`take_snapshot(pageId)\`, tìm và click nút "Cập nhật hàng loạt".
+   - Xác nhận Modal mở tại chỗ (In-Place Tab Isolation: không reload).
+   - Click nút "Chọn tất cả hạng phòng hợp lệ".
+   - Điền ô giá: \`fill(pageId, price_uid, "2500000")\`.
+   - Click nút "Hủy bỏ" hoặc "Áp dụng cập nhật" để đóng modal an toàn.
+3. THAO TÁC TOGGLE Ô TRẠNG THÁI BÁN TRỰC TIẾP (INLINE CELL):
+   - Locate nút "Đang mở bán" trên bảng lịch.
+   - Click -> trạng thái lập tức chuyển thành "Đang đóng bán" và tự động lưu.
+   - Click lại để hoàn trả "Đang mở bán".
+   - Click ô giá bán -> xác nhận xuất hiện input textbox focused -> tự động lưu.
+4. KÉO THẢ TAPE CHART (@dnd-kit):
+   - Xác định thẻ đặt phòng nguồn (\`from_uid\`) và ô phòng đích (\`to_uid\`).
+   - Gọi \`drag(pageId, from_uid, to_uid)\` để kéo thả chuyển phòng.
+5. KẾT THÚC & DỌN DẸP:
+   - Chụp ảnh màn hình lưu vào: harness-out/screenshots/${ownerSession}/owner-audit.png.
+   - Gọi \`close_page(pageId)\`. Báo cáo kết quả quản lý quỹ phòng cho coordinator.`
     };
 
     return {
       projectName,
       strategy: "multi_persona_journey",
-      personas: [guestWorker, receptionistWorker, ownerWorker]
+      personas: [guestWorker, receptionistWorker, housekeepingWorker, ownerWorker]
     };
   }
 
   /**
    * Generates a Role-Based Module Swarm Plan
-   * Partitions the system into 6 discrete modules, each tested by a dedicated Subagent in an isolated Chrome window.
    */
   generateModuleSwarmPlan(moduleFilter = []) {
     const config = this.getConfig() || {};
@@ -230,62 +299,46 @@ OPERATE ON DEDICATED CHROME WINDOW:
       const resolvedRoutes = mod.routes.map(r => resolveDynamicRoute(r, fixtures));
       const sampleRoutes = resolvedRoutes.slice(0, 10);
 
-      // Locate credentials from config personas or auto-discovered account.json
-      const persona = config.personas?.[mod.id] || config.personas?.[modKey] || Object.values(config.personas || {}).find(p => p.role === mod.authRole);
-      const username = persona ? (persona.username || persona.email || persona.auth?.username || persona.auth?.email || persona.user) : null;
-      const password = persona ? (persona.password || persona.auth?.password || persona.pass) : null;
+      // Match persona credentials from catalog or config
+      const catalogEntry = Object.values(CANONICAL_ACCOUNT_CATALOG).find(c => c.role === mod.authRole);
+      const persona = config.personas?.[mod.id] || config.personas?.[modKey] || catalogEntry;
+      const username = persona?.defaultUsername || persona?.username || persona?.email || persona?.auth?.username || null;
+      const password = persona?.defaultPassword || persona?.password || persona?.auth?.password || null;
 
       const authInstruction = (username && password)
-        ? `AUTHENTICATION CREDENTIALS (FROM ACCOUNT CONFIG):
-- Username / Email: "${username}"
-- Password: "${password}"
-If redirected to login page (${loginPath}):
-- Fill the username/email input with "${username}".
-- Fill the password input with "${password}".
-- Click the submit / login button and wait for redirect.`
-        : (mod.requiresAuth ? `AUTHENTICATION: This module requires Role "${mod.role}". Authenticate with valid ${mod.role} credentials if prompted.` : 'AUTHENTICATION: No auth required for public testing.');
+        ? `TÀI KHOẢN ĐĂNG NHẬP CHỈ ĐỊNH:
+- Email / Tên đăng nhập: "${username}"
+- Mật khẩu: "${password}"
+- Đường dẫn đăng nhập: "${loginPath}"
+Nếu bị chuyển hướng đến trang đăng nhập:
+1. Gọi take_snapshot lấy uid ô email -> điền "${username}".
+2. Lấy uid ô mật khẩu -> điền "${password}".
+3. Click nút "Đăng nhập" và đợi chuyển hướng.`
+        : (mod.requiresAuth ? `YÊU CẦU XÁC THỰC: Module này yêu cầu vai trò "${mod.role}". Đăng nhập bằng tài khoản có quyền tương ứng.` : 'KHÔNG CẦN ĐĂNG NHẬP (Public Module).');
 
       const prompt = `Act as the dedicated QA Subagent for Module "${mod.name}" (Role: ${mod.role}) in project "${projectName}".
 
-TESTING SCOPE (${mod.routes.length} routes in this module):
+PHẠM VI ĐƯỜNG DẪN KIỂM THỬ (${mod.routes.length} routes):
 ${sampleRoutes.map(r => `• ${baseUrl}${r}`).join('\n')}
 
 ${authInstruction}
 
-OPERATIONAL PROTOCOL (MANDATORY CRUD & DRAG-AND-DROP INTERACTIVE TESTING):
-1. WINDOW CREATION: Call chrome-devtools-mcp tool \`new_page(url: "${baseUrl}${sampleRoutes[0] || ''}", isolatedContext: "${sessionId}")\` and save returned \`pageId\`.
-2. AUTHENTICATION & LOGIN GATE:
-   - If redirected to login page (${loginPath}):
-     ${username && password ? `- Locate username input uid via \`take_snapshot(pageId)\`, fill "${username}".\n     - Locate password input uid, fill "${password}".\n     - Click submit button uid and wait for navigation.` : `- Authenticate with valid ${mod.role} credentials if available.`}
-
-3. DEEP DOM INTERACTION & CRUD OPERATIONS (STRICTLY FORBIDDEN TO JUST "GET LINKS"):
-   On each tested screen, execute real user actions using Chrome MCP tools:
-   a. Snapshot Discovery: Call \`take_snapshot(pageId)\` to inspect the a11y tree and obtain element \`uid\`s.
-   b. CRUD Operations (Create / Update / Status Change):
-      - [CREATE]: Locate and click primary action buttons ("Thêm", "Tạo mới", "Đặt dịch vụ", "Gửi yêu cầu").
-        Verify Modal/Drawer opens in-place (verifying Tab Isolation Standard: zero disruptive redirects).
-        Fill input fields via \`fill(pageId, uid, value)\`. Submit and verify new item appears.
-      - [UPDATE]: Click edit/update buttons on cards or table rows. Modify field values and verify in-place save.
-      - [TABS & FILTERING]: Click filter pills, category buttons, and tabs (\`[role="tab"]\`). Verify view filters without full page reload.
-   c. DRAG-AND-DROP INTERACTIONS (Tape Chart / Room Grid / Sortable Lists):
-      - Where draggable room cards or sortable list items exist (e.g. Tape Chart, room reallocations):
-        Locate source element (\`from_uid\`) and destination drop zone (\`to_uid\`).
-        Call \`drag(pageId, from_uid, to_uid)\` to execute the drag-and-drop interaction.
-        Verify card/room relocates smoothly to the target slot without layout break or console error.
-
-4. FIX VS NO-FIX BOUNDARY STANDARD:
-   - 🔴 FORBIDDEN TO TOUCH (Report Only):
-     * RBAC / Authorization gates: DO NOT remove \`@UseGuards()\`, bypass permission checks, or elevate roles just to make tests pass.
-     * Database Schema & Tables: DO NOT alter database schemas, drop tables, or run destructive migrations during UI testing. Report any DB failures (500, Prisma errors) as "Lỗi Database (Chờ xử lý)".
-   - 🟢 AUTHORIZED TO FIX (In-Place Remediation):
-     * Error Notification Copy: Upgrade raw technical error strings (403 Forbidden, 500 Internal, TypeError) into polite, human-readable toasts/alerts (e.g. "Bạn không có quyền thực hiện thao tác này").
-     * UI Layout & Interaction Bugs: Fix unresponsive click handlers, missing drawer state resets, z-index clipping, broken form validations, font floor violations (< 12px), or missing \`text-balance\`.
-     * Contract Binding: Align form payload keys with backend DTOs, fix incorrect URL query parameters.
-
-5. EVIDENCE & CLEAN TEARDOWN:
-   - Capture checkpoint screenshot: \`take_screenshot(pageId, filePath: "harness-out/screenshots/${sessionId}/checkpoint.png")\`.
-   - ALWAYS call \`close_page(pageId)\` when finished (PASS or FAIL).
-   - Report concise execution summary (routes tested, CRUD/Drag actions performed, console/network status, blockers).`;
+HƯỚNG DẪN THAO TÁC TƯƠNG TÁC THẬT (MANDATORY CRUD & DRAG-AND-DROP):
+1. KHỞI TẠO CỬA SỔ RIÊNG: Gọi \`new_page(url: "${baseUrl}${sampleRoutes[0] || ''}", isolatedContext: "${sessionId}")\` và lưu \`pageId\`.
+2. ĐĂNG NHẬP NẾU CẦN: Thực hiện đăng nhập theo chỉ định tài khoản phía trên.
+3. THAO TÁC TƯƠNG TÁC CHUYÊN SÂU:
+   a. Lấy cây DOM: Gọi \`take_snapshot(pageId)\` để xác định UIDs.
+   b. Thao tác Tạo mới (Create) & Modal: Click các nút "Thêm", "Tạo mới", "Cập nhật hàng loạt" -> Xác nhận modal/drawer mở tại chỗ -> Điền dữ liệu qua \`fill(pageId, uid, value)\` -> Lưu in-place.
+   c. Thao tác Tab & Lọc: Click các tab trạng thái [role="tab"] để xác nhận dữ liệu lọc tại chỗ không tải lại trang.
+   d. Thao tác Sửa trực tiếp (Inline Cell): Click các ô trạng thái đóng/mở bán hoặc ô sửa giá trên bảng dữ liệu.
+   e. Thao tác Kéo thả (@dnd-kit): Nếu có bảng lịch / Tape Chart, gọi \`drag(pageId, from_uid, to_uid)\`.
+4. BÁO CÁO SỰ CỐ KHÔNG ĐƯỢC TỰ SỬA:
+   - Nếu gặp lỗi Database (Prisma 500, ColumnNotFound, P2022) hoặc lỗi quyền RBAC (403 Forbidden):
+   - TUYỆT ĐỐI KHÔNG tự ý sửa database hoặc gỡ @UseGuards().
+   - Báo cáo rõ nguyên nhân gốc rễ và đề xuất lệnh cho DBA.
+5. CHỤP ẢNH & ĐÓNG CỬA SỔ:
+   - Lưu ảnh chụp: harness-out/screenshots/${sessionId}/checkpoint.png.
+   - Luôn luôn gọi \`close_page(pageId)\` khi hoàn tất.`;
 
       const roleTitle = `QA ${mod.name} Inspector`;
 
@@ -298,7 +351,7 @@ OPERATIONAL PROTOCOL (MANDATORY CRUD & DRAG-AND-DROP INTERACTIVE TESTING):
         Workspace: "inherit",
         WindowSession: sessionId,
         RequiresAuth: mod.requiresAuth,
-        CredentialsAvailable: !!persona,
+        CredentialsAvailable: !!(username && password),
         TargetRoutesCount: mod.routes.length,
         Routes: resolvedRoutes,
         invokeArgs: {

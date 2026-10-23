@@ -38,71 +38,77 @@ Subagents performing Mode 2 or interactive browser testing MUST adhere to dedica
 
 ---
 
-## 3. SUB-AGENT SWARM ACCELERATION ARCHITECTURE
-Coordinator agent accelerates verification by dispatching concurrent subagents:
-- **Worker 1 (`QA Code Gatekeeper`)**: `invoke_subagent` (`TypeName: "self"`, `Role: "QA Code Gatekeeper"`, `Model: "flash"`, `Workspace: "inherit"`). Runs `agent-harness test:code --auto-start`. Executes Tiers 0, 1, 2 in background.
-- **Worker 2 (`QA Flow Inspector`)**: `invoke_subagent` (`TypeName: "self"`, `Role: "QA Flow Inspector"`, `Model: "inherit"`, `Workspace: "inherit"`). Drives dedicated Chrome window via `new_page` -> flows -> `close_page`.
-- **Worker 3 (`QA Branch Fixer`)**: If failure occurs, spawn with `Workspace: "branch"`. Operates in isolated branch workspace (`git checkout -b harness-fix/...`), inspects `harness-out/INCIDENT_PACK.json`, applies minimal atomic fix, verifies via `agent-harness probe:<tier>`, and merges back only when green. Prevents ping-pong multi-agent loops.
+## 3. CANONICAL ACCOUNT CATALOG & MULTI-PERSONA SWARM
 
-### 3.1 Multi-Persona Concurrent Swarm (Guest vs Receptionist vs Hotel Owner)
-To test cross-system realtime interactions, spawn 3 concurrent persona subagents via `agent-harness subagents:personas`:
-1. `QA Guest Persona`: Dedicated window (`new_page` -> `/guest`). Places room/amenity order. Asserts instant submission status.
-2. `QA Receptionist Persona`: Dedicated window (`new_page` -> `/owner/operations`). Asserts realtime incoming toast/sound within 3000ms. Clicks "Approve".
-3. `QA Hotel Owner Persona`: Dedicated window (`new_page` -> `/owner/dashboard`). Asserts tape chart status update, revenue increment, and 0 console errors.
-All 3 personas operate on independent Chrome windows concurrently without session leakage.
+### 3.1 Canonical Accounts Directory
+| Role | Title | Login URL | Default Username | Default Password | Primary Workspace / Route |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `GUEST` | Khách Lưu Trú | Không cần login | N/A | N/A | `/g/DEMO_QR_ROOM_101` |
+| `HOTEL_FRONTDESK` | Nhân Viên Lễ Tân | `/dangnhap` | `frontdesk@vietsage.vn` | `Admin@123` | `/staff/front-desk` |
+| `HOUSEKEEPING` | Nhân Viên Buồng Phòng | `/dangnhap` | `housekeeping@vietsage.vn` | `Admin@123` | `/hotels/HCA_HOMESTAY/rooms` |
+| `TENANT_OWNER` | Chủ Khách Sạn | `/dangnhap` | `thucvn@gmail.com` (hoặc `tenant@vietsage.vn`) | `Admin@123` | `/owner/dashboard` & Channel Manager |
+| `SUPER_ADMIN` | Quản Trị Nền Tảng | `/dangnhap` | `admin@vietsage.vn` | `Admin@123` | `/admin/dashboard` |
 
-### 3.2 Universal Role-Based Module Swarm & Interactive 2-Step Flow (For ANY Project)
-When testing full application capabilities, routes are partitioned into discrete modules based on RBAC roles (either declared in `harness.config.json` via `config.modules`, or auto-inferred universally across any Web/SaaS/E-commerce/Hospitality stack):
-- **Universal Project Modules** (E-commerce, SaaS, CRM, Portals):
-  - `public`: Landing, Docs, Pricing, Login, Register (unauthenticated).
-  - `portal` / `user`: User Dashboard, Account, Settings, Orders (`USER` / `CUSTOMER`).
-  - `admin`: Backoffice, Platform Management, System Logs (`SUPER_ADMIN`).
-  - `partner`: Merchant, Vendor, Service Provider (`VENDOR` / `PARTNER`).
-- **Domain Preset Modules** (e.g. VietSage Hotel PMS):
-  - `public`, `guest_os`, `frontdesk`, `owner`, `marketplace`, `admin`.
+### 3.2 Closed-Loop Multi-Persona Swarm Architecture
+To test true end-to-end business lifecycle scenarios, spawn concurrent persona subagents via `agent-harness subagents:personas`:
+1. `QA Guest Persona`: Dedicated window (`new_page` -> `/g/DEMO_QR_ROOM_101`). Tạo yêu cầu dịch vụ buồng phòng, gửi đơn, ghi nhận mã đơn và **GIỮ NGUYÊN CỬA SỔ** để đón nhận tín hiệu duyệt.
+2. `QA Receptionist Persona`: Dedicated window (`new_page` -> `/staff/front-desk`). Đăng nhập `frontdesk@vietsage.vn`, nhận WebSocket realtime 'request:created', click mở Drawer tại chỗ, bấm "Tiếp nhận" -> chuyển trạng thái "Đang xử lý" -> bấm "Hoàn thành".
+3. `QA Housekeeping Persona`: Dedicated window (`new_page` -> `/hotels/HCA_HOMESTAY/rooms`). Đăng nhập `housekeeping@vietsage.vn`, nhận diện phòng `PROCESSING` (Chờ dọn), bấm "Bắt đầu dọn" -> bấm "Xác nhận phòng sẵn sàng (Room Ready)" -> phòng chuyển sang `AVAILABLE`.
+4. `QA Hotel Owner Persona`: Dedicated window (`new_page` -> `/owner/dashboard`). Đăng nhập `thucvn@gmail.com`, vào Channel Manager, cập nhật giá hàng loạt trong modal in-place, toggle đóng/mở bán ô lịch và kéo thả Tape Chart (@dnd-kit).
 
-**Universal Deterministic 2-Step Selection Protocol**:
-- Step 1: Prompt Disambiguation (Dual-Pass vs Code vs Flow vs Status).
-- Step 2: If Flow or Full Test selected -> Harness automatically detects and presents the Project's Role Modules. Agent prompts user to pick a target module or launch full multi-module subagent swarm (`agent-harness subagents:modules`).
-- Isolated Context: Each module subagent receives an isolated browser session (`isolatedContext: "mod-<id>-<entropy>"`), ensuring cookies and state never bleed across roles.
-
-### 3.3 Mandatory Subagent Invocation Invariant (Direct Tool Calling)
-STRICT INVARIANT: When the user requests subagent execution (e.g. "thực thi các test flow các module với sub_agents", "bắn lệnh sub_agents", "chạy subagent swarm"):
-- The Coordinator Agent is **STRICTLY FORBIDDEN** from merely printing text, returning JSON to the user, or stopping.
-- The Coordinator Agent **MUST IMMEDIATELY EXECUTE** the `invoke_subagent` tool calls for each module worker in the plan.
-- Each subagent worker executes its flow on its dedicated Chrome window via `new_page(url, isolatedContext)` and reports back results automatically.
+All personas operate on independent Chrome windows concurrently without session leakage.
 
 ---
 
-## 4. TIER-BY-TIER SELF-HEALING DIAGNOSTICS
-- **Tier 0 (Static/Contract)**: Font floor violation (`text-[10px]`, `text-[11px]`), missing `text-balance` on headings, or Zod schema mismatch. Fix: Floor at `text-xs` (12px), inject `text-balance` on titles, align Zod schema in `domain/schemas/` with DTO and call `parseWithZod`.
-- **Tier 1 (Realtime Socket)**: Event listener timed out after 3000ms. Fix: Align room name in gateway and event publisher; check `authProvider` login configuration.
-- **Tier 2 (Concurrency Gate)**: Multiple HTTP 200 responses received during concurrent burst. Fix: Enforce Optimistic Locking (version column check) or Pessimistic Transaction Lock (`SELECT FOR UPDATE`) in database service.
-- **Tier 3 (Browser Runtime/Hydration)**: Console error or background network 500. Fix: Move client-only browser APIs (`localStorage`, `window`) to `useEffect` or wrap in Zustand `safeStorage`; verify API route prefix `/api/v1`.
+## 4. DEEP BUSINESS TESTS, CRUD & CLOSED-LOOP REALTIME PROTOCOL
+
+### 4.1 Chu Trình Khép Kín Yêu Cầu Dịch Vụ (Guest -> Frontdesk Realtime Closed-Loop)
+1. **Bước 1 (Khách đặt)**:
+   - Truy cập: `/g/DEMO_QR_ROOM_101`.
+   - Click: Link/button `"Dịch vụ"` (`[data-testid='nav-services']`).
+   - Click: Thẻ dịch vụ `"Khăn tắm bổ sung"` hoặc món đầu tiên (`[data-testid='service-item']`).
+   - Fill: Ô ghi chú (`textarea` / `[data-testid='request-note']`) với nội dung: `"Yêu cầu 2 khăn tắm bổ sung cho phòng 101"`.
+   - Click: Nút `"Gửi yêu cầu"` (`button[type='submit']`).
+   - Assert: Hiển thị mã đơn `REQ-...` ở trạng thái `"Chờ tiếp nhận"`. Giữ nguyên cửa sổ khách.
+2. **Bước 2 (Lễ tân tiếp nhận)**:
+   - Đăng nhập: `frontdesk@vietsage.vn` / `Admin@123` tại `/dangnhap`.
+   - Mở bảng điều phối: `/staff/front-desk`.
+   - Lắng nghe: Sự kiện WebSocket realtime và âm thanh thông báo đơn mới.
+   - Click: Thẻ yêu cầu của phòng 101 trên bảng Kanban -> Drawer chi tiết trượt ra tại chỗ (In-Place Tab Isolation).
+   - Click: Nút `"Tiếp nhận"` (`button:has-text('Tiếp nhận')`).
+   - Assert: Badge trạng thái chuyển thành `"Đang xử lý"`.
+3. **Bước 3 (Khách thấy realtime)**:
+   - Tại cửa sổ Khách: Kiểm tra giao diện tự động cập nhật badge sang `"Đang xử lý (Lễ tân đã tiếp nhận)"` qua WebSocket mà **KHÔNG cần reload trang** (Zero Page Reload).
+4. **Bước 4 (Lễ tân hoàn thành)**:
+   - Tại Drawer Lễ tân: Click nút `"Hoàn thành"` (`button:has-text('Hoàn thành')`).
+   - Assert: Đơn chuyển sang tab `"Đã hoàn thành"`.
+5. **Bước 5 (Khách thấy hoàn thành)**:
+   - Tại cửa sổ Khách: Kiểm tra giao diện tự động hiển thị `"Đã hoàn thành"` kèm form đánh giá sao.
+
+### 4.2 Chu Trình Điều Phối Phòng & Vệ Sinh (Frontdesk Check-in -> Housekeeping Room Ready)
+1. **Lễ tân (`frontdesk@vietsage.vn`)**:
+   - Mở sơ đồ phòng tại `/staff/front-desk`.
+   - Click phòng có khách -> Bấm `"Trả phòng (Check-out)"`.
+   - Assert: Phòng chuyển trạng thái `PROCESSING` (Chờ dọn dẹp).
+2. **Buồng phòng (`housekeeping@vietsage.vn`)**:
+   - Đăng nhập: `housekeeping@vietsage.vn` / `Admin@123` tại `/dangnhap`.
+   - Mở sơ đồ buồng phòng tại `/hotels/HCA_HOMESTAY/rooms`.
+   - Click phòng có trạng thái `PROCESSING`.
+   - Click nút `"Bắt đầu dọn"` -> Click nút `"Xác nhận phòng sẵn sàng (Room Ready)"`.
+   - Assert: Trạng thái phòng chuyển sang `AVAILABLE` (Xanh lá / Sẵn sàng đón khách mới) trên toàn hệ thống.
+
+### 4.3 Chu Trình Đồng Bộ Quỹ Phòng & Giá Bán (Owner Channel Manager -> Frontdesk Tape Chart)
+1. **Chủ khách sạn (`thucvn@gmail.com` / `tenant@vietsage.vn`)**:
+   - Đăng nhập tại `/dangnhap` -> Điều hướng đến `/owner/hotels/.../channel-manager`.
+   - Click nút `"Cập nhật hàng loạt"` -> Modal mở tại chỗ -> Click `"Chọn tất cả hạng phòng hợp lệ"` -> Fill ô giá `"2500000"` -> Click `"Áp dụng cập nhật"`.
+   - Click trực tiếp ô trạng thái bán: Đổi từ `"Đang mở bán"` sang `"Đang đóng bán"` (Auto-save tức thời).
+   - Kéo thả khối đặt phòng trên Tape Chart bằng lệnh `drag(pageId, from_uid, to_uid)` (@dnd-kit).
+2. **Lễ tân (`frontdesk@vietsage.vn`)**:
+   - Mở Tape Chart hoặc Sơ đồ phòng -> Xác nhận biểu giá mới và trạng thái đóng/mở phòng hiển thị đồng bộ tức thời.
 
 ---
 
-## 5. DEEP UI INTERACTION, CRUD & DRAG-AND-DROP PROTOCOL
-Static URL navigation or stopping at login is strictly insufficient. For all UI flow tests, agents MUST execute active DOM interactions using Chrome MCP tools:
-1. **DOM Snapshot & Element Discovery**: Call `take_snapshot(pageId)` on every tested screen to obtain element `uid`s (buttons, tabs, inputs, draggable cards).
-2. **CRUD Operations (Create / Read / Update / Delete)**:
-   - **CREATE**: Click "Thêm phòng", "Tạo mới", or "Đặt dịch vụ" button. Verify Modal/Drawer opens in-place (verifying Tab Isolation: zero full-page redirects). Fill input fields via `fill(pageId, uid, value)`. Submit form and verify the new item appears in the list.
-   - **READ / TABS**: Click top tabs (`[role="tab"]`), category filters, and sorting headers (TanStack table sort). Assert view updates in-place without page reload.
-   - **UPDATE**: Click edit buttons on a table row or card. Modify values and save -> verify in-place feedback.
-   - **DELETE / CANCEL**: Click cancel/delete button -> verify confirmation dialog (`SwalVietSage`) -> confirm or dismiss safely.
-3. **Drag-and-Drop Operations (Tape Chart & Room Grids)**:
-   - For schedules, room grids, or sortable lists built with `@dnd-kit`:
-   - Locate the source reservation/room card (`from_uid`) and destination cell/room (`to_uid`).
-   - Call `drag(pageId, from_uid, to_uid)` to execute drag-and-drop reallocation.
-   - Verify reservation bar / room moves smoothly to the new slot without layout breaks or uncaught console errors.
-4. **End-to-End Realtime Journey (Khách -> Lễ tân -> Chủ khách sạn)**:
-   - Guest Subagent (`/g/[qrCode]`): Selects service, submits room request, receives request ID.
-   - Frontdesk Subagent (`/staff/front-desk`): Receives realtime WebSocket update, clicks "Tiếp nhận" / "Hoàn thành", verifies status badge transitions without reload.
-   - Owner Subagent (`/owner/dashboard`): Verifies room status and metrics update.
-
----
-
-## 6. FIX VS NO-FIX BOUNDARY PROTOCOL (RBAC & DATABASE INVARIANTS)
+## 5. FIX VS NO-FIX BOUNDARY PROTOCOL (RBAC & DATABASE INVARIANTS)
 When failures occur during UI flow testing, agents MUST observe strict remediation boundaries:
 
 ### 🔴 Strictly Forbidden to Touch / Bypass (Report Only):
@@ -116,7 +122,7 @@ When failures occur during UI flow testing, agents MUST observe strict remediati
 
 ---
 
-## 7. MANDATORY REPORT-ONLY INCIDENT PROTOCOL (ROOT CAUSE ESCALATION)
+## 6. MANDATORY REPORT-ONLY INCIDENT PROTOCOL (ROOT CAUSE ESCALATION)
 Whenever an issue is encountered that CANNOT or MUST NOT be fixed in-place (due to DB invariants, missing migrations, RBAC security policy, or 3rd-party dependencies):
 - **NEVER FAIL SILENTLY**: Agents are strictly forbidden from ignoring, suppressing, or bypassing the failure.
 - **MANDATORY INCIDENT DOSSIER**: Emit an explicit root-cause report containing:

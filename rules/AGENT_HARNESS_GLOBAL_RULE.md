@@ -12,16 +12,26 @@ All AI agents (Antigravity, Codex, Orca) MUST strictly execute this deterministi
 3. **Subagent Swarm Dispatch (Speed Acceleration)**:
    - Worker 1 (`QA Code Gatekeeper`, model: flash): `agent-harness test:code --auto-start`.
    - Worker 2 (`QA Flow Inspector`, model: inherit): Spawn dedicated window via `new_page(url)`, bind with `select_page`, verify flows, teardown with `close_page`. NEVER hijack open tabs.
-   - Multi-Persona Verification: Execute `agent-harness subagents:personas` to spawn Guest, Receptionist, and Owner subagents on 3 dedicated Chrome windows to verify end-to-end realtime flow without session collisions.
+   - Multi-Persona Closed-Loop Verification: Execute `agent-harness subagents:personas` to spawn Guest, Receptionist, Housekeeping, and Owner subagents on independent Chrome windows.
 
-### 2. FEATURE DEVELOPMENT SYNC (Living Harness Spec)
+### 2. CANONICAL ACCOUNTS & ROLE CREDENTIALS CATALOG
+Mọi tác vụ kiểm thử luồng người dùng BẮT BUỘC sử dụng đúng tài khoản phân quyền chuẩn:
+| Role Code | Vai trò hiển thị | Email / Username | Mật khẩu | URL đăng nhập | URL bắt đầu |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `GUEST` | Khách lưu trú | *Không cần login* | N/A | N/A | `/g/DEMO_QR_ROOM_101` |
+| `HOTEL_FRONTDESK` | Nhân viên Lễ tân | `frontdesk@vietsage.vn` | `Admin@123` | `/dangnhap` | `/staff/front-desk` |
+| `HOUSEKEEPING` | Nhân viên Buồng phòng | `housekeeping@vietsage.vn` | `Admin@123` | `/dangnhap` | `/hotels/HCA_HOMESTAY/rooms` |
+| `TENANT_OWNER` | Chủ khách sạn | `thucvn@gmail.com` *(hoặc tenant@vietsage.vn)* | `Admin@123` | `/dangnhap` | `/owner/dashboard` & Channel Manager |
+| `SUPER_ADMIN` | Quản trị nền tảng | `admin@vietsage.vn` | `Admin@123` | `/dangnhap` | `/admin/dashboard` |
+
+### 3. FEATURE DEVELOPMENT SYNC (Living Harness Spec)
 Never finalize code without syncing the harness spec. Before task completion:
 - New UI Screen/Route: `agent-harness add:flow "<feature-name>"`
 - New Socket Event: `agent-harness add:socket "<feature-name>"`
 - New Mutation/Approval: `agent-harness add:concurrency "<feature-name>"`
 (The engine deduplicates by semantic signature and performs in-place upgrades).
 
-### 3. SELF-HEALING & CIRCUIT BREAKER PROTOCOL
+### 4. SELF-HEALING & CIRCUIT BREAKER PROTOCOL
 - **Exit Code 0 (PASS)**: Task verified. Finalize report.
 - **Exit Code 2 (CIRCUIT_BREAKER_TRIPPED)**: STOP IMMEDIATELY. Max 3 remediation retries exceeded. DO NOT attempt further automated edits. Report blocker directly to user to prevent multi-agent infinite ping-pong.
 - **Exit Code 1 (FAIL)**:
@@ -30,7 +40,7 @@ Never finalize code without syncing the harness spec. Before task completion:
   3. Apply scoped fix strictly to failing gateway/controller/component.
   4. Re-run targeted probe: `agent-harness probe:<tier>` until green before merging.
 
-### 4. PREREQUISITE INSPECTION & ASK-BEFORE-PROCEED INVARIANT (ANTI-SUPERFICIALITY GATE)
+### 5. PREREQUISITE INSPECTION & ANTI-SUPERFICIALITY GATE
 STRICT INVARIANT: Agents are FORBIDDEN from executing shallow/superficial partial tests (e.g. testing only unauthenticated landing pages when requested to test full project features) and falsely declaring full verification.
 1. **Preflight Audit**: Before executing Mode 2 or full runs, execute `agent-harness audit:prerequisites`.
 2. **Missing Prerequisite Check**: If routes require authentication (/owner, /hotels, /admin, /staff) but credentials/personas are missing, or dynamic parameters ([hotelId], [qrCode]) lack fixture substitutions:
@@ -38,42 +48,31 @@ STRICT INVARIANT: Agents are FORBIDDEN from executing shallow/superficial partia
    - HALT AND ASK: Explicitly prompt user (via `ask_question` or inquiry) to provide credentials/fixtures or authorize automated test fixture seeding.
 3. **Execution Gate**: Only proceed to full suite execution once all necessary prerequisites are satisfied or user explicitly grants `--force` bypass.
 
-### 5. UNIVERSAL ROLE-BASED MODULE PARTITIONING & SUBAGENT SWARM DISPATCH (FOR ANY PROJECT)
-To prevent superficial testing and avoid cookie collisions across user roles, routes in ANY repository are partitioned into discrete modules (via `config.modules` in `harness.config.json` or automatic heuristic clustering):
-- **Universal Stacks** (SaaS, E-commerce, ERP, Fintech, Portals):
-  - `public`: Landing, Docs, Pricing, Login, Register (unauthenticated).
-  - `portal` / `user`: User Workspace, Account, Orders, Settings (requires `USER` auth).
-  - `admin`: Backoffice, Platform Admin, System Logs (requires `ADMIN` auth).
-  - `partner`: Merchant, Vendor, Service Provider (requires `VENDOR` auth).
-- **Custom Project Modules**: Declared explicitly under `config.modules` in `harness.config.json`.
+### 6. UNIVERSAL ROLE-BASED MODULE PARTITIONING (FOR ANY PROJECT)
+Routes in ANY repository are partitioned into discrete modules (via `config.modules` in `harness.config.json` or automatic heuristic clustering):
+- `public`: Landing, Docs, Pricing, Login, Register (unauthenticated).
+- `portal` / `user`: User Workspace, Account, Orders, Settings (requires `USER` auth).
+- `admin`: Backoffice, Platform Admin, System Logs (requires `ADMIN` auth).
+- `partner`: Merchant, Vendor, Service Provider (requires `VENDOR` auth).
+- Custom Domain Modules (e.g. VietSage Hotel PMS: `guest_os`, `frontdesk`, `owner`, `marketplace`).
 
-**Mandatory 2-Step Interactive Option Flow**:
-1. When user initiates test flow, present the primary execution options (Dual-Pass, Code, Flow, Status).
-2. Upon selecting Flow or Full test, the agent MUST present the target project's detected/configured Role Modules list and allow user to select:
-   - `[All] Full Parallel Swarm (Dedicated Subagents on isolated Chrome windows per module)`
-   - `Individual Module (e.g. public, portal, admin, partner, or custom modules)`
-3. Execute via `agent-harness test:module <id>` or dispatch parallel subagents with unique `isolatedContext: "mod-<id>-..."` per role. Never mix auth sessions across roles.
-
-### 6. MANDATORY SUBAGENT INVOCATION STANDARD (DIRECT TOOL CALL REQUIRED)
-STRICT PROTOCOL: When user triggers subagent execution ("thực thi sub_agents", "bắn lệnh subagent", "chạy swarm các module"):
-1. The AI Agent MUST NOT reply with a passive text summary or simply output the JSON plan.
-2. The AI Agent MUST IMMEDIATELY execute tool calls: `invoke_subagent(TypeName: "self", Role: worker.Role, Model: "inherit", Prompt: worker.Prompt)`.
-3. Auto-load credentials: If `account.json` or `config.personas` exists, the subagent prompt already contains valid login credentials. Subagents execute autonomous flow testing on dedicated Chrome windows (`isolatedContext`) and report back upon completion.
-
-### 7. DEEP UI INTERACTION, CRUD & DRAG-AND-DROP MANDATE (NO SHALLOW NAVIGATION)
-STRICT INVARIANT: Merely navigating to routes or stopping at login is considered an incomplete test. Subagents MUST execute active DOM interactions using Chrome MCP tools:
-1. **DOM Snapshot Discovery**: Call `take_snapshot(pageId)` to locate interactive element UIDs.
-2. **CRUD & Interactive Operations**:
-   - **CREATE & BATCH MODAL**: Click "Thêm phòng" / "Tạo mới" / "Cập nhật hàng loạt" -> verify Modal/Drawer opens in-place without page redirect (Tab Isolation Standard) -> fill form fields via `fill(pageId, uid, value)` -> submit or cancel cleanly -> verify in-place feedback.
-   - **READ / TABS**: Click filter pills, category buttons, and tabs (`[role="tab"]`) to verify in-place filtering without full-page reloads.
-   - **UPDATE & INLINE CELL AUTO-SAVE**: Click inline cell buttons (e.g. stop-sell / open-sell toggles) -> verify instantaneous state change in-place. Click inline price cells -> verify focused input textbox appears (`textbox focusable focused`) -> type new value -> verify auto-save without page reload.
-   - **DELETE / CANCEL**: Click cancel/delete button -> verify confirm dialog -> dismiss safely.
-3. **Drag-and-Drop Operations (@dnd-kit)**:
-   - For schedules, Tape Chart, and room allocation grids:
-   - Locate source reservation element (`from_uid`) and destination cell/room (`to_uid`).
-   - Call `drag(pageId, from_uid, to_uid)` to execute drag-and-drop reallocation.
-   - Verify room/reservation moves to the new slot without layout breaks or uncaught console errors.
-4. **Cross-Role Realtime E2E Journey**: Execute Khách (tạo yêu cầu trên /g/[qrCode]) -> Lễ tân (nhận WebSocket và bấm duyệt trên /staff/front-desk).
+### 7. CLOSED-LOOP BUSINESS LIFECYCLE & DEEP INTERACTION PROTOCOL
+Nghiêm cấm việc kiểm thử chỉ dừng lại ở điều hướng link tĩnh hoặc login rồi thoát. Subagents BẮT BUỘC thực thi tương tác DOM thật và chu trình khép kín đa vai trò:
+1. **Chu Trình Khép Kín Yêu Cầu Dịch Vụ Buồng Phòng (Guest -> Frontdesk Realtime Closed-Loop)**:
+   - **Bước 1 (Khách gửi)**: Truy cập `/g/DEMO_QR_ROOM_101` -> Click menu "Dịch vụ" -> Click nút "Yêu cầu" trên thẻ dịch vụ 'Khăn tắm' -> Fill ghi chú: "Yêu cầu 2 khăn tắm bổ sung" -> Click "Gửi yêu cầu" -> Hệ thống sinh mã `REQ-...` với trạng thái "Chờ tiếp nhận". **Cửa sổ khách giữ nguyên không đóng**.
+   - **Bước 2 (Lễ tân nhận & duyệt)**: Đăng nhập `frontdesk@vietsage.vn` / `Admin@123` tại `/dangnhap` -> Mở `/staff/front-desk` -> Nhận thông báo WebSocket realtime -> Click thẻ yêu cầu phòng 101 -> Drawer mở trượt tại chỗ -> Click nút "Tiếp nhận" -> Badge đổi sang "Đang xử lý".
+   - **Bước 3 (Khách thấy realtime)**: Màn hình khách (Cửa sổ 1) **tự động chuyển trạng thái** sang "Đang xử lý (Lễ tân đã tiếp nhận)" qua WebSocket mà **KHÔNG cần reload trang**.
+   - **Bước 4 (Lễ tân hoàn thành)**: Tại Drawer, Lễ tân click nút "Hoàn thành" -> Đơn chuyển tab "Đã hoàn thành".
+   - **Bước 5 (Khách thấy hoàn thành)**: Cửa sổ khách tự động chuyển trạng thái "Đã hoàn thành" kèm form đánh giá sao.
+2. **Chu Trình Check-in -> Vệ Sinh Buồng Phòng (Frontdesk -> Housekeeping Room Ready)**:
+   - Lễ tân check-in / check-out phòng -> Phòng chuyển trạng thái `PROCESSING` (Chờ dọn).
+   - Nhân viên buồng phòng đăng nhập `housekeeping@vietsage.vn` / `Admin@123` -> Mở sơ đồ buồng phòng -> Click phòng chờ dọn -> Bấm "Bắt đầu dọn" -> Bấm "Xác nhận phòng sẵn sàng (Room Ready)" -> Phòng chuyển sang `AVAILABLE` (Sẵn sàng đón khách mới).
+3. **Chu Trình Quản Lý Quỹ Phòng & Giá Kênh Bán OTA (Owner ARI Channel Manager)**:
+   - Chủ khách sạn đăng nhập `thucvn@gmail.com` / `Admin@123` -> Vào `/owner/hotels/.../channel-manager`.
+   - Click "Cập nhật hàng loạt" modal -> Chọn tất cả hạng phòng -> Nhập mức giá mới -> Áp dụng cập nhật.
+   - Click trực tiếp ô trạng thái: Đổi từ "Đang mở bán" sang "Đang đóng bán" (Auto-save tức thời).
+   - Kéo thả khối đặt phòng trên Tape Chart bằng lệnh `drag(pageId, from_uid, to_uid)` (@dnd-kit).
+   - Lễ tân mở Tape Chart xác nhận dữ liệu giá & tồn kho đồng bộ tức thì.
 
 ### 8. FIX VS NO-FIX BOUNDARY STANDARD (RBAC & DATABASE INVARIANTS)
 Remediation must strictly respect architectural boundaries:
