@@ -56,6 +56,16 @@ export const CANONICAL_ACCOUNT_CATALOG = {
     defaultPassword: "Admin@123",
     dashboardUrl: "/admin/dashboard",
     description: "Quản lý toàn bộ khách sạn, người dùng, quyền hạn hệ thống, cấu hình nền tảng"
+  },
+  SERVICE_STAFF: {
+    role: "SERVICE_STAFF",
+    title: "Nhân Viên Đối Tác Cung Ứng Dịch Vụ (Marketplace Service Staff)",
+    authRequired: true,
+    loginUrl: "/dangnhap",
+    defaultUsername: "service@vietsage.vn",
+    defaultPassword: "Admin@123",
+    dashboardUrl: "/service/orders",
+    description: "Tiếp nhận và xử lý các đơn đặt tour du lịch, thuê xe, ẩm thực đối tác từ khách sạn"
   }
 };
 
@@ -508,8 +518,473 @@ export const UNIVERSAL_INTERACTIVE_JOURNEYS = [
         guide: "Xác nhận thẻ đặt phòng được chuyển slot thành công, cập nhật state tại chỗ, 0 reload, 0 console error"
       }
     ]
+  },
+
+  // =========================================================================
+  // JOURNEY 6: WALK-IN / DIRECT RESERVATION CREATION (TẠO ĐẶT PHÒNG MỚI)
+  // =========================================================================
+  {
+    id: "frontdesk-booking-walkin-flow",
+    name: "Tạo Mới Đặt Phòng Trực Tiếp (Frontdesk Walk-in Booking & Reservation CRUD)",
+    type: "SINGLE_ROLE_INTERACTION",
+    role: "HOTEL_FRONTDESK",
+    category: "RESERVATIONS",
+    account: CANONICAL_ACCOUNT_CATALOG.FRONTDESK,
+    description: "Lễ tân mở modal đặt phòng mới, nhập thông tin khách lưu trú, chọn khoảng ngày, chọn hạng phòng, điền số tiền cọc và lưu in-place -> Kiểm tra booking xuất hiện ngay trên danh sách và Tape Chart",
+    startUrl: "/staff/front-desk",
+    steps: [
+      {
+        action: "navigate",
+        url: "/staff/front-desk",
+        guide: "Truy cập giao diện bàn lễ tân điều phối đặt phòng"
+      },
+      {
+        action: "snapshot",
+        guide: "Gọi take_snapshot(pageId) tìm nút 'Đặt phòng mới' hoặc 'Tạo đặt phòng'"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Đặt phòng mới'",
+        selector: "button:has-text('Đặt phòng mới'), button:has-text('Tạo đặt phòng'), [data-testid='btn-create-booking']",
+        guide: "Click nút mở Modal Đặt phòng mới tại chỗ"
+      },
+      {
+        action: "assert_modal",
+        targetName: "Modal Tạo Đặt Phòng",
+        selector: "dialog[modal], [role='dialog']",
+        guide: "Xác nhận Modal 'Tạo Đặt Phòng' hiển thị in-place, không reload trang"
+      },
+      {
+        action: "fill",
+        targetName: "Ô Họ và tên khách",
+        selector: "input[name*='name'], input[placeholder*='khách'], input[placeholder*='Họ và tên']",
+        value: "Trần Văn Hoàng (Test Walk-in Auto)",
+        guide: "Điền họ tên đầy đủ của khách lưu trú"
+      },
+      {
+        action: "fill",
+        targetName: "Ô Số điện thoại",
+        selector: "input[name*='phone'], input[placeholder*='điện thoại'], input[type='tel']",
+        value: "0987654321",
+        guide: "Điền số điện thoại liên hệ"
+      },
+      {
+        action: "fill",
+        targetName: "Ô Số CCCD / Hộ chiếu",
+        selector: "input[name*='idNumber'], input[placeholder*='CCCD'], input[placeholder*='hộ chiếu']",
+        value: "001202008899",
+        guide: "Điền số căn cước công dân"
+      },
+      {
+        action: "click",
+        targetName: "Hạng phòng lựa chọn",
+        selector: "select[name*='roomType'], [data-testid='select-room-type'], button[role='combobox']",
+        guide: "Chọn hạng phòng cần đặt (Deluxe King / Superior)"
+      },
+      {
+        action: "fill",
+        targetName: "Ô Tiền đặt cọc",
+        selector: "input[name*='deposit'], input[placeholder*='cọc']",
+        value: "500000",
+        guide: "Nhập số tiền đặt cọc 500.000 VND"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Lưu đặt phòng'",
+        selector: "button[type='submit'], button:has-text('Lưu đặt phòng'), button:has-text('Xác nhận tạo')",
+        guide: "Click nút Lưu để hoàn tất tạo đặt phòng"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận modal đóng an toàn, hiển thị thông báo SweetAlert2 thành công, thẻ đặt phòng mới xuất hiện ở trạng thái CONFIRMED (Đã xác nhận)"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 7: CHECK-IN & ROOM ASSIGNMENT (GÁN PHÒNG & NHẬN PHÒNG)
+  // =========================================================================
+  {
+    id: "frontdesk-checkin-assignment-flow",
+    name: "Quy Trình Gán Phòng & Nhận Phòng (Check-in & Room Assignment Lifecycle)",
+    type: "SINGLE_ROLE_INTERACTION",
+    role: "HOTEL_FRONTDESK",
+    category: "RESERVATIONS",
+    account: CANONICAL_ACCOUNT_CATALOG.FRONTDESK,
+    description: "Lễ tân mở danh sách khách đến hôm nay (Arrivals), chọn đơn đặt phòng chờ nhận, chọn số phòng trống sẵn sàng (AVAILABLE) và bấm 'Xác nhận Check-in' -> Trạng thái phòng chuyển sang OCCUPIED",
+    startUrl: "/staff/front-desk",
+    steps: [
+      {
+        action: "navigate",
+        url: "/staff/front-desk",
+        guide: "Mở giao diện lễ tân"
+      },
+      {
+        action: "click",
+        targetName: "Tab 'Khách đến' (Arrivals)",
+        selector: "button:has-text('Khách đến'), [data-tab='arrivals'], [role='tab']:has-text('Đến')",
+        guide: "Chuyển sang Tab danh sách khách đến trong ngày"
+      },
+      {
+        action: "snapshot",
+        guide: "Gọi take_snapshot(pageId) xác định thẻ khách đến"
+      },
+      {
+        action: "click",
+        targetName: "Thẻ đơn đặt phòng khách đến",
+        selector: "[data-testid='arrival-card'], tr:has-text('CONFIRMED'), .booking-arrival-item",
+        guide: "Click vào đơn đặt phòng -> Drawer chi tiết trượt ra tại chỗ"
+      },
+      {
+        action: "click",
+        targetName: "Nút chọn phòng trống gán cho khách",
+        selector: "select[name*='roomId'], button:has-text('Gán phòng'), [data-testid='btn-assign-room']",
+        guide: "Chọn phòng sạch (AVAILABLE) phù hợp với hạng phòng đã đặt"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Nhận phòng (Check-in)'",
+        selector: "button:has-text('Nhận phòng'), button:has-text('Check-in')",
+        guide: "Bấm nút xác nhận Check-in khách vào phòng"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận trạng thái booking chuyển thành CHECKED_IN và trên sơ đồ phòng chuyển sang màu đỏ/tím OCCUPIED (Đang có khách)"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 8: FOLIO BILLING, INCIDENTAL CHARGES & CHECK-OUT (PHỤ THU, THANH TOÁN & TRẢ PHÒNG)
+  // =========================================================================
+  {
+    id: "frontdesk-billing-folio-checkout-flow",
+    name: "Quản Lý Folio, Phụ Thu Dịch Vụ, Thanh Toán & Trả Phòng (Folio Billing & Check-out)",
+    type: "SINGLE_ROLE_INTERACTION",
+    role: "HOTEL_FRONTDESK",
+    category: "BILLING_OPS",
+    account: CANONICAL_ACCOUNT_CATALOG.FRONTDESK,
+    description: "Lễ tân mở Folio của phòng đang lưu trú, thêm phụ thu dịch vụ mini bar, ghi nhận thanh toán đầy đủ công nợ và hoàn tất thủ tục trả phòng -> Phòng chuyển sang DIRTY/PROCESSING để buồng phòng dọn dẹp",
+    startUrl: "/staff/front-desk",
+    steps: [
+      {
+        action: "navigate",
+        url: "/staff/front-desk",
+        guide: "Mở giao diện điều phối lễ tân"
+      },
+      {
+        action: "click",
+        targetName: "Phòng đang có khách lưu trú",
+        selector: "[data-status='OCCUPIED'], .room-card-occupied, tr:has-text('Đang ở')",
+        guide: "Click vào phòng đang có khách -> Mở Drawer chi tiết phòng"
+      },
+      {
+        action: "click",
+        targetName: "Tab 'Hóa đơn & Chi phí' (Folio)",
+        selector: "button:has-text('Hóa đơn'), button:has-text('Folio'), [data-tab='billing']",
+        guide: "Chuyển sang xem bảng kê chi phí và hóa đơn phòng"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Thêm phụ thu / dịch vụ'",
+        selector: "button:has-text('Thêm dịch vụ'), button:has-text('Thêm phụ thu'), [data-action='add-folio-item']",
+        guide: "Click nút thêm khoản chi phí phát sinh"
+      },
+      {
+        action: "fill",
+        targetName: "Tên khoản chi phí phát sinh",
+        selector: "input[placeholder*='dịch vụ'], input[name*='description']",
+        value: "2 lon nước ngọt Mini Bar (P.101)",
+        guide: "Nhập tên khoản phụ thu phát sinh"
+      },
+      {
+        action: "fill",
+        targetName: "Số tiền đơn giá",
+        selector: "input[placeholder*='giá'], input[name*='amount']",
+        value: "50000",
+        guide: "Nhập số tiền 50.000 VND"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Xác nhận thêm chi phí'",
+        selector: "button:has-text('Xác nhận thêm'), button:has-text('Thêm vào hóa đơn')",
+        guide: "Lưu khoản phụ thu vào Folio phòng"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Thanh toán (Payment)'",
+        selector: "button:has-text('Thanh toán'), button:has-text('Thu tiền'), [data-action='pay-folio']",
+        guide: "Click mở Modal quyết toán thanh toán"
+      },
+      {
+        action: "click",
+        targetName: "Phương thức thanh toán Tiền mặt hoặc Chuyển khoản QR",
+        selector: "button:has-text('Tiền mặt'), input[value='CASH'], button:has-text('Chuyển khoản')",
+        guide: "Chọn phương thức thanh toán"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Xác nhận thu tiền'",
+        selector: "button:has-text('Xác nhận thu tiền'), button:has-text('Hoàn tất thanh toán')",
+        guide: "Ghi nhận khoản thanh toán, công nợ trở về 0"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Hoàn tất trả phòng (Check-out)'",
+        selector: "button:has-text('Trả phòng'), button:has-text('Check-out')",
+        guide: "Click hoàn tất trả phòng cho khách"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận phòng chuyển sang trạng thái DIRTY / PROCESSING (Chờ dọn dẹp) và hóa đơn chốt PAID"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 9: ROOM INVENTORY CRUD & MAINTENANCE MANAGEMENT
+  // =========================================================================
+  {
+    id: "owner-room-inventory-crud-flow",
+    name: "Quản Lý Danh Mục Phòng & Thiết Lập Phòng Mới (Room Setup, Category & Inventory CRUD)",
+    type: "SINGLE_ROLE_INTERACTION",
+    role: "TENANT_OWNER",
+    category: "HOTEL_SETUP",
+    account: CANONICAL_ACCOUNT_CATALOG.OWNER,
+    description: "Chủ khách sạn vào Quản lý phòng, mở modal 'Thêm phòng mới', điền số phòng, chọn tầng và hạng phòng, lưu dữ liệu in-place; sau đó chỉnh sửa trạng thái phòng sang 'Bảo trì' (MAINTENANCE) và hoàn trả 'Hoạt động'",
+    startUrl: "/owner/hotels/cmu9y158p0001j8v487zujvhn/rooms",
+    steps: [
+      {
+        action: "navigate",
+        url: "/owner/hotels/cmu9y158p0001j8v487zujvhn/rooms",
+        guide: "Mở giao diện Quản lý danh mục phòng khách sạn"
+      },
+      {
+        action: "snapshot",
+        guide: "Gọi take_snapshot(pageId) lấy danh sách phòng và tìm nút 'Thêm phòng'"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Thêm phòng mới'",
+        selector: "button:has-text('Thêm phòng'), button:has-text('Tạo phòng'), [data-testid='btn-add-room']",
+        guide: "Click nút mở Modal Thêm phòng mới tại chỗ"
+      },
+      {
+        action: "assert_modal",
+        targetName: "Modal Tạo Phòng",
+        selector: "dialog[modal], [role='dialog']",
+        guide: "Xác nhận modal hiển thị in-place"
+      },
+      {
+        action: "fill",
+        targetName: "Số hiệu phòng",
+        selector: "input[name*='roomNumber'], input[placeholder*='số phòng'], input[placeholder*='Số phòng']",
+        value: "P.308",
+        guide: "Điền số phòng: P.308"
+      },
+      {
+        action: "fill",
+        targetName: "Tầng",
+        selector: "input[name*='floor'], input[placeholder*='tầng'], input[placeholder*='Tầng']",
+        value: "3",
+        guide: "Điền tầng 3"
+      },
+      {
+        action: "click",
+        targetName: "Hạng phòng",
+        selector: "select[name*='roomType'], [data-testid='room-type-select']",
+        guide: "Chọn hạng phòng cho phòng mới"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Lưu phòng'",
+        selector: "button[type='submit'], button:has-text('Lưu'), button:has-text('Xác nhận')",
+        guide: "Bấm lưu phòng mới vào hệ thống"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận modal đóng, phòng P.308 xuất hiện trên danh sách phòng"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Bảo trì'",
+        selector: "button:has-text('Bảo trì'), [data-action='maintenance']",
+        guide: "Thử nghiệm chuyển đổi trạng thái phòng sang Bảo trì (MAINTENANCE)"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận badge phòng chuyển sang trạng thái MAINTENANCE màu cam"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 10: GUEST POLICE DECLARATION / KBTT (KHAI BÁO TẠM TRÚ CÔNG AN)
+  // =========================================================================
+  {
+    id: "frontdesk-guest-declaration-kbtt-flow",
+    name: "Quy Trình Khai Báo Tạm Trú Công An BCA (KBTT Declaration Flow)",
+    type: "SINGLE_ROLE_INTERACTION",
+    role: "HOTEL_FRONTDESK",
+    category: "COMPLIANCE_OPS",
+    account: CANONICAL_ACCOUNT_CATALOG.FRONTDESK,
+    description: "Lễ tân vào mục Khai báo tạm trú, chọn danh sách khách lưu trú trong ngày, rà soát dữ liệu CCCD/Hộ chiếu và bấm 'Gửi đồng bộ hồ sơ lưu trú' -> Trạng thái chuyển sang 'Đã khai báo'",
+    startUrl: "/owner/hotels/cmu9y158p0001j8v487zujvhn/kbtt",
+    steps: [
+      {
+        action: "navigate",
+        url: "/owner/hotels/cmu9y158p0001j8v487zujvhn/kbtt",
+        guide: "Mở màn hình Khai báo tạm trú BCA (KBTT)"
+      },
+      {
+        action: "snapshot",
+        guide: "Gọi take_snapshot(pageId) kiểm tra danh sách khách lưu trú cần khai báo"
+      },
+      {
+        action: "click",
+        targetName: "Checkbox chọn khách hàng khai báo",
+        selector: "input[type='checkbox'], [role='checkbox']",
+        guide: "Chọn các khách hàng lưu trú cần gửi khai báo"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Đồng bộ hồ sơ khai báo BCA'",
+        selector: "button:has-text('Khai báo'), button:has-text('Đồng bộ KBTT'), button:has-text('Gửi khai báo')",
+        guide: "Click nút gửi hồ sơ khai báo sang cổng thông tin BCA"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận xuất hiện thông báo SweetAlert2 thành công và cột trạng thái cập nhật 'ĐÃ KHAI BÁO'"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 11: MARKETPLACE SERVICE & TOUR ORDER LIFECYCLE
+  // =========================================================================
+  {
+    id: "marketplace-order-fulfillment-flow",
+    name: "Chu Trình Xử Lý Đơn Hàng Dịch Vụ Đối Tác (Marketplace Order Lifecycle)",
+    type: "CROSS_ROLE_LIFECYCLE",
+    category: "MARKETPLACE_OPS",
+    description: "Khách đặt món ẩm thực hoặc tour dịch vụ từ Guest OS -> Nhân viên đối tác tiếp nhận trên cổng Marketplace -> Chuyển sang 'Đang chuẩn bị' -> 'Hoàn tất giao'",
+    rolesInvolved: ["GUEST", "SERVICE_STAFF"],
+    stages: [
+      {
+        stageIndex: 1,
+        actor: "GUEST",
+        title: "Khách Đặt Món Ẩm Thực Hoặc Tour Du Lịch",
+        account: CANONICAL_ACCOUNT_CATALOG.GUEST,
+        startUrl: "/g/DEMO_QR_ROOM_101",
+        steps: [
+          {
+            action: "navigate",
+            url: "/g/DEMO_QR_ROOM_101",
+            guide: "Khách mở giao diện phòng"
+          },
+          {
+            action: "click",
+            targetName: "Menu 'Ẩm thực / Dịch vụ đối tác'",
+            selector: "a[href*='marketplace'], button:has-text('Ẩm thực'), button:has-text('Ăn uống')",
+            guide: "Vào mục đặt món hoặc dịch vụ đối tác liên kết"
+          },
+          {
+            action: "click",
+            targetName: "Nút 'Thêm vào giỏ' hoặc 'Đặt ngay'",
+            selector: "button:has-text('Thêm'), button:has-text('Đặt món'), [data-action='add-to-cart']",
+            guide: "Chọn món hoặc tour cần đặt"
+          },
+          {
+            action: "click",
+            targetName: "Nút 'Xác nhận đặt hàng'",
+            selector: "button:has-text('Xác nhận đặt'), button:has-text('Đặt hàng')",
+            guide: "Bấm xác nhận gửi đơn"
+          },
+          {
+            action: "assert_state",
+            guide: "Xác nhận hiển thị đơn hàng đối tác với trạng thái 'Chờ xác nhận'"
+          }
+        ]
+      },
+      {
+        stageIndex: 2,
+        actor: "SERVICE_STAFF",
+        title: "Nhân Viên Đối Tác Tiếp Nhận & Giao Hàng",
+        account: CANONICAL_ACCOUNT_CATALOG.SERVICE_STAFF,
+        startUrl: "/service/orders",
+        steps: [
+          {
+            action: "navigate",
+            url: "/service/orders",
+            guide: "Đối tác mở trang quản lý đơn dịch vụ"
+          },
+          {
+            action: "snapshot",
+            guide: "Gọi take_snapshot(pageId) xác định đơn mới từ phòng 101"
+          },
+          {
+            action: "click",
+            targetName: "Nút 'Tiếp nhận đơn'",
+            selector: "button:has-text('Tiếp nhận'), button:has-text('Xác nhận đơn')",
+            guide: "Click tiếp nhận đơn dịch vụ"
+          },
+          {
+            action: "click",
+            targetName: "Nút 'Hoàn tất giao'",
+            selector: "button:has-text('Hoàn tất'), button:has-text('Đã giao')",
+            guide: "Click hoàn tất giao dịch vụ đến phòng khách"
+          },
+          {
+            action: "assert_state",
+            guide: "Xác nhận đơn hàng chuyển sang trạng thái COMPLETED"
+          }
+        ]
+      }
+    ]
   }
 ];
+
+/**
+ * Mapping between module IDs and their core business journeys
+ */
+export const MODULE_JOURNEY_MAP = {
+  guest_os: [
+    "guest-frontdesk-closed-loop-flow",
+    "marketplace-order-fulfillment-flow"
+  ],
+  frontdesk: [
+    "frontdesk-booking-walkin-flow",
+    "frontdesk-checkin-assignment-flow",
+    "guest-frontdesk-closed-loop-flow",
+    "frontdesk-billing-folio-checkout-flow",
+    "frontdesk-housekeeping-room-ready-flow",
+    "frontdesk-guest-declaration-kbtt-flow"
+  ],
+  housekeeping: [
+    "frontdesk-housekeeping-room-ready-flow"
+  ],
+  owner: [
+    "owner-channel-manager-batch-flow",
+    "owner-channel-manager-inline-cell-flow",
+    "owner-tape-chart-drag-and-drop-flow",
+    "owner-room-inventory-crud-flow",
+    "frontdesk-guest-declaration-kbtt-flow"
+  ],
+  marketplace: [
+    "marketplace-order-fulfillment-flow"
+  ],
+  admin: [
+    "owner-room-inventory-crud-flow"
+  ]
+};
+
+/**
+ * Filter journeys relevant to a specific module ID
+ */
+export function listJourneysForModule(moduleId) {
+  const journeyIds = MODULE_JOURNEY_MAP[moduleId] || [];
+  return UNIVERSAL_INTERACTIVE_JOURNEYS.filter(j => journeyIds.includes(j.id));
+}
 
 /**
  * Get a specific journey by unique ID

@@ -6,6 +6,7 @@ import {
   CANONICAL_ACCOUNT_CATALOG,
   UNIVERSAL_INTERACTIVE_JOURNEYS,
   listJourneysForRole,
+  listJourneysForModule,
   generateStepByStepGuide
 } from './journey-registry.mjs';
 
@@ -168,7 +169,7 @@ CÁC BƯỚC THAO TÁC CỤ THỂ (CLICK VÀO ĐÂU, ĐIỀN CÁI GÌ):
       Workspace: "inherit",
       WindowSession: receptionistSession,
       AccountInfo: CANONICAL_ACCOUNT_CATALOG.FRONTDESK,
-      Prompt: `Act as a Frontdesk Receptionist (Lễ tân khách sạn) testing closed-loop request handling in "${projectName}".
+      Prompt: `Act as a Frontdesk Receptionist (Lễ tân khách sạn) testing full-spectrum frontdesk operations in "${projectName}".
 
 TÀI KHOẢN & ĐĂNG NHẬP:
 - URL Đăng nhập: "${baseUrl}/dangnhap"
@@ -176,25 +177,34 @@ TÀI KHOẢN & ĐĂNG NHẬP:
 - Mật khẩu: "Admin@123"
 - Cửa sổ cách ly: "${receptionistSession}"
 
-CÁC BƯỚC THAO TÁC CỤ THỂ (CLICK VÀO ĐÂU, DUYỆT CÁI GÌ):
+CÁC BƯỚC THAO TÁC CỤ THỂ (CLICK VÀO ĐÂU, ĐIỀN CÁI GÌ, DUYỆT CÁI GÌ):
 1. KHỞI TẠO CỬA SỔ & ĐĂNG NHẬP:
    - Gọi \`new_page(url: "${baseUrl}/dangnhap", isolatedContext: "${receptionistSession}")\` -> lưu \`pageId\`.
-   - Gọi \`take_snapshot(pageId)\`, điền ô email "frontdesk@vietsage.vn", điền ô mật khẩu "Admin@123".
-   - Click nút "Đăng nhập" và đợi chuyển hướng.
-2. VÀO BẢNG ĐIỀU PHỐI LỄ TÂN:
-   - Điều hướng hoặc mở URL: "${baseUrl}/staff/front-desk" (hoặc /hotels/${hotelId}/requests).
-   - Lắng nghe sự kiện WebSocket realtime khi Khách vừa tạo yêu cầu.
-3. TIẾP NHẬN YÊU CẦU PHÒNG:
-   - Gọi \`take_snapshot(pageId)\`, xác định thẻ yêu cầu mới của phòng ${qrCode}.
-   - Click vào thẻ yêu cầu -> Xác nhận Drawer chi tiết trượt ra tại chỗ (In-Place Tab Isolation: không reload).
-   - Click nút "Tiếp nhận" (hoặc "Duyệt") -> Xác nhận badge trạng thái chuyển sang "Đang xử lý".
-4. HOÀN TẤT YÊU CẦU:
-   - Đợi 2 giây, click nút "Hoàn thành" (hoặc "Đã xử lý") -> Xác nhận đơn đóng thành công.
-5. CHECK-IN / CHECK-OUT PHÒNG:
-   - Tại sơ đồ phòng, click một phòng đang có khách -> Bấm "Trả phòng" để chuyển trạng thái sang PROCESSING (Chờ buồng phòng dọn).
+   - Điền email "frontdesk@vietsage.vn", mật khẩu "Admin@123", click "Đăng nhập".
+2. TẠO MỚI ĐẶT PHÒNG TRỰC TIẾP (WALK-IN BOOKING CRUD):
+   - Mở "${baseUrl}/staff/front-desk".
+   - Click nút "Đặt phòng mới" / "Tạo đặt phòng" -> Xác nhận Modal mở tại chỗ (In-Place Tab Isolation).
+   - Điền họ tên khách: "Trần Văn Hoàng (Test Walk-in)".
+   - Điền số điện thoại: "0987654321", CCCD: "001202008899".
+   - Chọn hạng phòng có sẵn, điền tiền cọc: "500000".
+   - Click "Lưu đặt phòng" -> Xác nhận modal đóng, thông báo thành công và đơn mới ở trạng thái CONFIRMED.
+3. TIẾP NHẬN YÊU CẦU DỊCH VỤ PHÒNG REALTIME (WEBSOCKET):
+   - Chuyển sang Tab Yêu cầu phòng (Requests) -> Nhận sự kiện WebSocket từ Khách.
+   - Click thẻ yêu cầu phòng ${qrCode} -> Drawer trượt tại chỗ.
+   - Click nút "Tiếp nhận" -> Badge chuyển "Đang xử lý".
+   - Đợi 2 giây, click "Hoàn thành" -> Đơn hoàn tất thành công.
+4. GÁN PHÒNG & CHECK-IN KHÁCH ĐẾN (ARRIVALS):
+   - Chuyển sang Tab "Khách đến" (Arrivals).
+   - Click đơn đặt phòng chờ nhận -> Chọn phòng trống sạch (AVAILABLE) -> Click "Nhận phòng (Check-in)".
+   - Xác nhận trạng thái chuyển sang CHECKED_IN và phòng đổi sang OCCUPIED.
+5. THÊM PHỤ THU, THANH TOÁN FOLIO & TRẢ PHÒNG (CHECK-OUT):
+   - Click phòng đang có khách -> Chọn Tab "Hóa đơn / Folio".
+   - Click "Thêm phụ thu" -> Điền "2 lon nước ngọt Mini Bar", giá "50000" -> Lưu.
+   - Click "Thanh toán" -> Chọn "Tiền mặt" -> Bấm xác nhận thu tiền (công nợ về 0).
+   - Click "Hoàn tất trả phòng (Check-out)" -> Phòng chuyển sang PROCESSING (Chờ dọn dẹp).
 6. KẾT THÚC & DỌN DẸP:
-   - Chụp ảnh màn hình lưu vào: harness-out/screenshots/${receptionistSession}/receptionist-approved.png.
-   - Gọi \`close_page(pageId)\`. Báo cáo kết quả duyệt yêu cầu cho coordinator.`
+   - Chụp ảnh màn hình lưu vào: harness-out/screenshots/${receptionistSession}/receptionist-full-ops.png.
+   - Gọi \`close_page(pageId)\`. Báo cáo kết quả vận hành lễ tân cho coordinator.`
     };
 
     // 3. Worker Buồng Phòng (Housekeeping Staff)
@@ -265,7 +275,13 @@ CÁC BƯỚC THAO TÁC CỤ THỂ (CLICK VÀO ĐÂU, CẬP NHẬT CÁI GÌ):
 4. KÉO THẢ TAPE CHART (@dnd-kit):
    - Xác định thẻ đặt phòng nguồn (\`from_uid\`) và ô phòng đích (\`to_uid\`).
    - Gọi \`drag(pageId, from_uid, to_uid)\` để kéo thả chuyển phòng.
-5. KẾT THÚC & DỌN DẸP:
+5. THIẾT LẬP PHÒNG MỚI (ROOM SETUP CRUD):
+   - Mở "${baseUrl}/owner/hotels/${hotelId}/rooms".
+   - Gọi \`take_snapshot(pageId)\`, click nút "Thêm phòng mới" -> Xác nhận modal mở tại chỗ.
+   - Điền số phòng "P.308", Tầng "3", chọn hạng phòng -> Bấm "Lưu".
+   - Xác nhận modal đóng, phòng P.308 xuất hiện trên bảng danh sách.
+   - Click nút "Bảo trì" để chuyển trạng thái sang MAINTENANCE, sau đó hoàn trả hoạt động.
+6. KẾT THÚC & DỌN DẸP:
    - Chụp ảnh màn hình lưu vào: harness-out/screenshots/${ownerSession}/owner-audit.png.
    - Gọi \`close_page(pageId)\`. Báo cáo kết quả quản lý quỹ phòng cho coordinator.`
     };
@@ -305,6 +321,10 @@ CÁC BƯỚC THAO TÁC CỤ THỂ (CLICK VÀO ĐÂU, CẬP NHẬT CÁI GÌ):
       const username = persona?.defaultUsername || persona?.username || persona?.email || persona?.auth?.username || null;
       const password = persona?.defaultPassword || persona?.password || persona?.auth?.password || null;
 
+      // Extract module-specific business journeys
+      const moduleJourneys = listJourneysForModule(mod.id);
+      const journeyGuides = moduleJourneys.map(j => generateStepByStepGuide(j)).join('\n\n');
+
       const authInstruction = (username && password)
         ? `TÀI KHOẢN ĐĂNG NHẬP CHỈ ĐỊNH:
 - Email / Tên đăng nhập: "${username}"
@@ -338,7 +358,7 @@ HƯỚNG DẪN THAO TÁC TƯƠNG TÁC THẬT (MANDATORY CRUD & DRAG-AND-DROP):
    - Báo cáo rõ nguyên nhân gốc rễ và đề xuất lệnh cho DBA.
 5. CHỤP ẢNH & ĐÓNG CỬA SỔ:
    - Lưu ảnh chụp: harness-out/screenshots/${sessionId}/checkpoint.png.
-   - Luôn luôn gọi \`close_page(pageId)\` khi hoàn tất.`;
+   - Luôn luôn gọi \`close_page(pageId)\` khi hoàn tất.${journeyGuides ? `\n\n=======================================================\nCÁC KỊCH BẢN NGHIỆP VỤ BẮT BUỘC THỰC THI CHO MODULE NÀY:\n=======================================================\n${journeyGuides}` : ''}`;
 
       const roleTitle = `QA ${mod.name} Inspector`;
 

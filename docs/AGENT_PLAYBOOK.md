@@ -106,6 +106,54 @@ All personas operate on independent Chrome windows concurrently without session 
 2. **Lễ tân (`frontdesk@vietsage.vn`)**:
    - Mở Tape Chart hoặc Sơ đồ phòng -> Xác nhận biểu giá mới và trạng thái đóng/mở phòng hiển thị đồng bộ tức thời.
 
+### 4.4 Chu Trình Tạo Mới Đặt Phòng Trực Tiếp (Frontdesk Walk-in Booking CRUD)
+1. **Lễ tân (`frontdesk@vietsage.vn`)**:
+   - Mở `/staff/front-desk` -> Click nút `"Đặt phòng mới"` / `"Tạo đặt phòng"`.
+   - Assert: Modal Tạo Đặt Phòng mở tại chỗ (In-Place Tab Isolation: 0 reload).
+   - Fill ô họ tên: `"Trần Văn Hoàng (Test Walk-in Auto)"`.
+   - Fill ô số điện thoại: `"0987654321"`, CCCD: `"001202008899"`.
+   - Chọn hạng phòng có sẵn, điền tiền cọc: `"500000"`.
+   - Click nút `"Lưu đặt phòng"` / `"Xác nhận tạo"`.
+   - Assert: Modal đóng an toàn, hiển thị thông báo SweetAlert2 thành công, thẻ đặt phòng mới xuất hiện ở trạng thái `CONFIRMED` trên danh sách và Tape Chart.
+
+### 4.5 Chu Trình Gán Phòng & Nhận Phòng (Check-in & Room Assignment)
+1. **Lễ tân (`frontdesk@vietsage.vn`)**:
+   - Mở `/staff/front-desk` -> Chuyển sang Tab `"Khách đến"` (Arrivals).
+   - Click thẻ đơn đặt phòng cần check-in -> Drawer chi tiết trượt ra tại chỗ.
+   - Chọn phòng trống sạch (`AVAILABLE`) phù hợp hạng phòng đã đặt.
+   - Click nút `"Nhận phòng (Check-in)"`.
+   - Assert: Trạng thái booking chuyển sang `CHECKED_IN`, phòng chuyển sang màu đỏ/tím `OCCUPIED` trên sơ đồ phòng.
+
+### 4.6 Chu Trình Quản Lý Folio, Phụ Thu Dịch Vụ, Thanh Toán & Trả Phòng (Folio Billing & Check-out)
+1. **Lễ tân (`frontdesk@vietsage.vn`)**:
+   - Click vào phòng đang lưu trú (`OCCUPIED`) trên sơ đồ phòng.
+   - Chọn Tab `"Hóa đơn & Chi phí (Folio)"` -> Click `"Thêm phụ thu / dịch vụ"`.
+   - Fill tên khoản phụ thu: `"2 lon nước ngọt Mini Bar"`, đơn giá: `"50000"` -> Click `"Xác nhận thêm"`.
+   - Assert: Tổng tiền Folio tự động cập nhật tăng thêm 50.000 VND.
+   - Click nút `"Thanh toán (Payment)"` -> Chọn phương thức `"Tiền mặt"` -> Click `"Xác nhận thu tiền"`.
+   - Assert: Công nợ còn lại trở về 0 VND, trạng thái Folio chuyển sang `PAID`.
+   - Click nút `"Hoàn tất trả phòng (Check-out)"`.
+   - Assert: Phòng chuyển sang trạng thái `DIRTY` / `PROCESSING` (Chờ buồng phòng dọn dẹp).
+
+### 4.7 Chu Trình Thiết Lập Phòng Mới & Quản Lý Trạng Thái Bảo Trì (Room Setup & Inventory CRUD)
+1. **Chủ khách sạn (`thucvn@gmail.com`)**:
+   - Mở `/owner/hotels/.../rooms` -> Click nút `"Thêm phòng mới"`.
+   - Assert: Modal Tạo phòng mở tại chỗ.
+   - Fill số phòng: `"P.308"`, tầng: `"3"`, chọn hạng phòng -> Click `"Lưu"`.
+   - Assert: Modal đóng, phòng P.308 xuất hiện trên danh sách phòng.
+   - Click nút `"Bảo trì"` -> Assert: Badge phòng chuyển sang `MAINTENANCE`. Click lại để hoàn trả `AVAILABLE`.
+
+### 4.8 Chu Trình Khai Báo Tạm Trú Công An BCA (KBTT Declaration Flow)
+1. **Lễ tân (`frontdesk@vietsage.vn`) / Chủ khách sạn**:
+   - Mở `/owner/hotels/.../kbtt`.
+   - Click chọn khách lưu trú qua checkbox -> Click nút `"Đồng bộ hồ sơ khai báo BCA"`.
+   - Assert: Xuất hiện thông báo SweetAlert2 thành công và cột trạng thái cập nhật `ĐÃ KHAI BÁO`.
+
+### 4.9 Chu Trình Xử Lý Đơn Dịch Vụ & Tour Đối Tác (Marketplace Order Lifecycle)
+1. **Khách lưu trú (`GUEST`)**: Quét QR phòng -> Vào menu Ẩm thực / Tour -> Chọn món -> Bấm `"Xác nhận đặt hàng"`.
+2. **Nhân viên đối tác (`service@vietsage.vn` / `Admin@123`)**: Mở `/service/orders` -> Thấy đơn mới -> Bấm `"Tiếp nhận đơn"` -> Bấm `"Hoàn tất giao"`.
+3. **Khách lưu trú**: Thấy đơn hàng chuyển trạng thái `COMPLETED` tức thời qua WebSocket.
+
 ---
 
 ## 5. FIX VS NO-FIX BOUNDARY PROTOCOL (RBAC & DATABASE INVARIANTS)

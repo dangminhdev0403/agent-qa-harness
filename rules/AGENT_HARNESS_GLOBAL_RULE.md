@@ -73,6 +73,28 @@ Nghiêm cấm việc kiểm thử chỉ dừng lại ở điều hướng link t
    - Click trực tiếp ô trạng thái: Đổi từ "Đang mở bán" sang "Đang đóng bán" (Auto-save tức thời).
    - Kéo thả khối đặt phòng trên Tape Chart bằng lệnh `drag(pageId, from_uid, to_uid)` (@dnd-kit).
    - Lễ tân mở Tape Chart xác nhận dữ liệu giá & tồn kho đồng bộ tức thì.
+4. **Chu Trình Tạo Mới Đặt Phòng Trực Tiếp (Frontdesk Walk-in Booking CRUD)**:
+   - Lễ tân mở `/staff/front-desk` -> Click nút "Đặt phòng mới" / "Tạo đặt phòng" (Modal mở in-place).
+   - Điền tên khách: "Trần Văn Hoàng (Test Walk-in Auto)", SĐT: "0987654321", CCCD: "001202008899".
+   - Chọn hạng phòng, điền tiền cọc: "500000" -> Click "Lưu đặt phòng".
+   - Assert: Modal đóng, SweetAlert2 báo thành công, đơn mới hiển thị trạng thái `CONFIRMED`.
+5. **Chu Trình Gán Phòng & Nhận Phòng (Check-in & Room Assignment)**:
+   - Lễ tân chuyển sang Tab "Khách đến" (Arrivals) -> Click đơn đặt phòng -> Drawer trượt ra tại chỗ.
+   - Chọn phòng trống sạch (`AVAILABLE`) -> Click "Nhận phòng (Check-in)".
+   - Assert: Booking chuyển thành `CHECKED_IN`, phòng chuyển sang `OCCUPIED`.
+6. **Chu Trình Quản Lý Folio, Phụ Thu Dịch Vụ, Thanh Toán & Trả Phòng (Folio Billing & Check-out)**:
+   - Click phòng đang có khách -> Chọn Tab "Hóa đơn / Folio" -> Click "Thêm phụ thu".
+   - Điền "2 lon nước ngọt Mini Bar", giá "50000" -> Lưu -> Tổng tiền Folio tăng 50.000 VND.
+   - Click "Thanh toán" -> Chọn "Tiền mặt" -> Bấm xác nhận thu tiền (công nợ về 0).
+   - Click "Hoàn tất trả phòng (Check-out)" -> Phòng chuyển sang `DIRTY` / `PROCESSING`.
+7. **Chu Trình Thiết Lập Phòng Mới & Quản Lý Trạng Thái Bảo Trì (Room Setup & Inventory CRUD)**:
+   - Chủ khách sạn vào `/owner/hotels/.../rooms` -> Click "Thêm phòng mới" -> Điền số phòng "P.308", Tầng "3", chọn hạng phòng -> Lưu.
+   - Assert: Modal đóng, phòng P.308 xuất hiện trên danh sách -> Click nút "Bảo trì" chuyển sang `MAINTENANCE` rồi hoàn trả hoạt động.
+8. **Chu Trình Khai Báo Tạm Trú Công An BCA (KBTT Declaration Flow)**:
+   - Mở `/owner/hotels/.../kbtt` -> Chọn checkbox khách lưu trú -> Click nút "Đồng bộ hồ sơ khai báo BCA".
+   - Assert: Thông báo SweetAlert2 thành công và cột trạng thái cập nhật `ĐÃ KHAI BÁO`.
+9. **Chu Trình Xử Lý Đơn Dịch Vụ Đối Tác (Marketplace Order Lifecycle)**:
+   - Khách đặt món/tour từ Guest OS -> Nhân viên đối tác (`service@vietsage.vn` / `Admin@123`) mở `/service/orders` bấm "Tiếp nhận đơn" -> "Hoàn tất giao" -> Khách nhận trạng thái `COMPLETED`.
 
 ### 8. FIX VS NO-FIX BOUNDARY STANDARD (RBAC & DATABASE INVARIANTS)
 Remediation must strictly respect architectural boundaries:
