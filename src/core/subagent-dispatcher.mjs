@@ -1,13 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { HARNESS_MODULES, partitionRoutesByModule } from './module-registry.mjs';
+import { HARNESS_MODULES, partitionRoutesByModule, detectProjectDomain } from './module-registry.mjs';
 import { resolveDynamicRoute } from './prerequisite-inspector.mjs';
 import {
   CANONICAL_ACCOUNT_CATALOG,
   UNIVERSAL_INTERACTIVE_JOURNEYS,
   listJourneysForRole,
   listJourneysForModule,
-  generateStepByStepGuide
+  listJourneysForDomain,
+  generateStepByStepGuide,
+  resolveAccountCatalog
 } from './journey-registry.mjs';
 
 /**
@@ -117,6 +119,225 @@ Window Session Tag: ${windowSessionId}`
     const config = this.getConfig() || {};
     const projectName = config.project || path.basename(this.cwd);
     const baseUrl = config.baseUrl || "http://localhost:3000";
+    const routes = config.browser?.routes || [];
+    const domain = detectProjectDomain(routes, config);
+
+    // =========================================================================
+    // DOMAIN 1: E-COMMERCE SWARM PLAN (Shopper + Merchant)
+    // =========================================================================
+    if (domain === 'ecommerce') {
+      const shopperSession = this.generateWindowSessionId('shopper');
+      const merchantSession = this.generateWindowSessionId('merchant');
+
+      const shopperWorker = {
+        TypeName: "self",
+        Role: "QA Shopper Persona",
+        Model: "inherit",
+        Workspace: "inherit",
+        WindowSession: shopperSession,
+        AccountInfo: CANONICAL_ACCOUNT_CATALOG.SHOPPER,
+        Prompt: `Act as a Guest Shopper (Khách mua hàng) testing E-Commerce storefront and checkout in "${projectName}".
+
+TÀI KHOẢN & TRUY CẬP:
+- Không cần đăng nhập trước. URL bắt đầu: "${baseUrl}/shop" (hoặc /products)
+- Cửa sổ cách ly: "${shopperSession}"
+
+CÁC BƯỚC THAO TÁC CỤ THỂ (MÔ PHỎNG NGƯỜI DÙNG THẬT):
+1. Mở trang: \`new_page(url: "${baseUrl}/shop", isolatedContext: "${shopperSession}")\` -> lưu \`pageId\`.
+2. Duyệt sản phẩm và click vào sản phẩm đầu tiên hoặc bấm "Thêm vào giỏ".
+3. Xác nhận Mini-Cart Drawer mở trượt tại chỗ (In-Place Tab Isolation: không reload).
+4. Bấm "Tiến hành thanh toán" -> Điền form (Tên: Nguyễn Văn Mua, SĐT: 0901234567, Địa chỉ: 123 Đường Mẫu, Q1).
+5. Chọn hình thức COD -> Bấm "Xác nhận đặt hàng" -> Assert hiển thị mã đơn ORD-...
+6. Chụp ảnh lưu: harness-out/screenshots/${shopperSession}/shopper-checkout.png -> \`close_page(pageId)\`.`
+      };
+
+      const merchantWorker = {
+        TypeName: "self",
+        Role: "QA Merchant Persona",
+        Model: "inherit",
+        Workspace: "inherit",
+        WindowSession: merchantSession,
+        AccountInfo: CANONICAL_ACCOUNT_CATALOG.MERCHANT,
+        Prompt: `Act as a Merchant / Seller (Nhà bán hàng) testing order fulfillment in "${projectName}".
+
+TÀI KHOẢN & ĐĂNG NHẬP:
+- URL Đăng nhập: "${baseUrl}/dangnhap"
+- Email: "merchant@shop.test" | Mật khẩu: "Admin@123"
+- Cửa sổ cách ly: "${merchantSession}"
+
+CÁC BƯỚC THAO TÁC CỤ THỂ:
+1. Mở và đăng nhập: \`new_page(url: "${baseUrl}/dangnhap", isolatedContext: "${merchantSession}")\` -> điền email/pass -> đăng nhập.
+2. Mở "${baseUrl}/vendor/orders" -> Xem đơn hàng mới nhất vừa đặt.
+3. Click đơn hàng -> Drawer chi tiết trượt ra tại chỗ -> Bấm "Tiếp nhận đơn hàng" -> Badge đổi sang CONFIRMED.
+4. Mở "${baseUrl}/vendor/products" -> Click "Thêm sản phẩm mới" -> Điền form -> Lưu tại chỗ.
+5. Sửa tồn kho inline trên bảng dữ liệu -> Assert auto-save thành công.
+6. Chụp ảnh: harness-out/screenshots/${merchantSession}/merchant-ops.png -> \`close_page(pageId)\`.`
+      };
+
+      return {
+        projectName,
+        domain: 'ecommerce',
+        strategy: "multi_persona_journey",
+        personas: [shopperWorker, merchantWorker]
+      };
+    }
+
+    // =========================================================================
+    // DOMAIN 2: B2B SAAS SWARM PLAN (Workspace Owner + Team Member)
+    // =========================================================================
+    if (domain === 'saas') {
+      const ownerSession = this.generateWindowSessionId('saas-owner');
+      const memberSession = this.generateWindowSessionId('saas-member');
+
+      const ownerWorker = {
+        TypeName: "self",
+        Role: "QA SaaS Workspace Owner Persona",
+        Model: "inherit",
+        Workspace: "inherit",
+        WindowSession: ownerSession,
+        AccountInfo: CANONICAL_ACCOUNT_CATALOG.WORKSPACE_OWNER,
+        Prompt: `Act as a SaaS Workspace Owner testing team management & subscription upgrade in "${projectName}".
+
+TÀI KHOẢN & ĐĂNG NHẬP:
+- URL Đăng nhập: "${baseUrl}/dangnhap"
+- Email: "owner@saas.test" | Mật khẩu: "Admin@123"
+- Cửa sổ cách ly: "${ownerSession}"
+
+CÁC BƯỚC THAO TÁC CỤ THỂ:
+1. Mở và đăng nhập: \`new_page(url: "${baseUrl}/dangnhap", isolatedContext: "${ownerSession}")\` -> đăng nhập.
+2. Mở "${baseUrl}/settings/team" -> Click "Mời thành viên" -> Modal mở tại chỗ -> Điền "colleague@saas.test", chọn role MEMBER -> Gửi lời mời -> Assert hàng mới INVITED.
+3. Mở "${baseUrl}/settings/billing" -> Click "Nâng cấp lên gói PRO" -> Modal mở in-place -> Xác nhận nâng cấp -> Assert badge PRO_ACTIVE.
+4. Chụp ảnh: harness-out/screenshots/${ownerSession}/saas-owner.png -> \`close_page(pageId)\`.`
+      };
+
+      const memberWorker = {
+        TypeName: "self",
+        Role: "QA SaaS Member Persona",
+        Model: "inherit",
+        Workspace: "inherit",
+        WindowSession: memberSession,
+        AccountInfo: CANONICAL_ACCOUNT_CATALOG.TEAM_MEMBER,
+        Prompt: `Act as a SaaS Team Member testing workspace project management in "${projectName}".
+
+TÀI KHOẢN & ĐĂNG NHẬP:
+- URL Đăng nhập: "${baseUrl}/dangnhap"
+- Email: "member@saas.test" | Mật khẩu: "Admin@123"
+- Cửa sổ cách ly: "${memberSession}"
+
+CÁC BƯỚC THAO TÁC CỤ THỂ:
+1. Mở và đăng nhập: \`new_page(url: "${baseUrl}/dangnhap", isolatedContext: "${memberSession}")\` -> đăng nhập.
+2. Mở "${baseUrl}/workspace" -> Bấm "Tạo dự án mới" -> Điền tên "Dự án Nâng cấp Q4" -> Lưu in-place.
+3. Kéo thả thẻ công việc trên bảng Kanban (@dnd-kit) -> Assert thẻ đổi cột tại chỗ.
+4. Chụp ảnh: harness-out/screenshots/${memberSession}/saas-member.png -> \`close_page(pageId)\`.`
+      };
+
+      return {
+        projectName,
+        domain: 'saas',
+        strategy: "multi_persona_journey",
+        personas: [ownerWorker, memberWorker]
+      };
+    }
+
+    // =========================================================================
+    // DOMAIN 3: CRM / APPOINTMENT SWARM PLAN (Client + Sales Rep)
+    // =========================================================================
+    if (domain === 'crm') {
+      const clientSession = this.generateWindowSessionId('crm-client');
+      const salesSession = this.generateWindowSessionId('crm-sales');
+
+      const clientWorker = {
+        TypeName: "self",
+        Role: "QA CRM Client Persona",
+        Model: "inherit",
+        Workspace: "inherit",
+        WindowSession: clientSession,
+        AccountInfo: CANONICAL_ACCOUNT_CATALOG.CLIENT,
+        Prompt: `Act as a Client booking an appointment in "${projectName}".
+
+TRUY CẬP:
+- URL bắt đầu: "${baseUrl}/booking" | Cửa sổ: "${clientSession}"
+CÁC BƯỚC:
+1. Mở: \`new_page(url: "${baseUrl}/booking", isolatedContext: "${clientSession}")\`.
+2. Chọn dịch vụ tư vấn -> Chọn khung giờ trống trên lịch -> Điền tên "Hoàng Minh", SĐT "0918888888" -> Xác nhận đặt lịch.
+3. Assert mã lịch hẹn xuất hiện -> Bấm "Đổi lịch hẹn" -> Chọn giờ mới -> Assert cập nhật in-place.
+4. Chụp ảnh: harness-out/screenshots/${clientSession}/booking.png -> \`close_page(pageId)\`.`
+      };
+
+      const salesWorker = {
+        TypeName: "self",
+        Role: "QA CRM Sales Rep Persona",
+        Model: "inherit",
+        Workspace: "inherit",
+        WindowSession: salesSession,
+        AccountInfo: CANONICAL_ACCOUNT_CATALOG.SALES_REP,
+        Prompt: `Act as a Sales Rep managing pipeline & deals in "${projectName}".
+
+ĐĂNG NHẬP:
+- Email: "sales@crm.test" | Pass: "Admin@123" | Cửa sổ: "${salesSession}"
+CÁC BƯỚC:
+1. Đăng nhập tại "${baseUrl}/dangnhap".
+2. Mở "${baseUrl}/pipeline" -> Bấm "Thêm cơ hội mới (Deal)" -> Điền tên deal, giá trị 500M -> Lưu.
+3. Kéo thả thẻ Deal từ cột Lead sang Proposal bằng \`drag(pageId, from_uid, to_uid)\`.
+4. Assert deal đổi cột và tổng tiền tính lại tại chỗ.
+5. Chụp ảnh: harness-out/screenshots/${salesSession}/pipeline.png -> \`close_page(pageId)\`.`
+      };
+
+      return {
+        projectName,
+        domain: 'crm',
+        strategy: "multi_persona_journey",
+        personas: [clientWorker, salesWorker]
+      };
+    }
+
+    // =========================================================================
+    // DOMAIN 4: GENERIC WEB APP SWARM PLAN (Public Visitor + Authenticated Member)
+    // =========================================================================
+    if (domain === 'generic') {
+      const publicSession = this.generateWindowSessionId('generic-public');
+      const userSession = this.generateWindowSessionId('generic-user');
+
+      const publicWorker = {
+        TypeName: "self",
+        Role: "QA Public Visitor Persona",
+        Model: "inherit",
+        Workspace: "inherit",
+        WindowSession: publicSession,
+        AccountInfo: null,
+        Prompt: `Act as a Public Visitor browsing public routes in "${projectName}".
+1. Mở trang chủ \`new_page(url: "${baseUrl}", isolatedContext: "${publicSession}")\`.
+2. Thử nghiệm tìm kiếm và điều hướng các trang công khai.
+3. Assert 0 lỗi console, 0 network 4xx/5xx, font floor >= 12px, text-balance trên tiêu đề.
+4. Chụp ảnh: harness-out/screenshots/${publicSession}/public.png -> \`close_page(pageId)\`.`
+      };
+
+      const userWorker = {
+        TypeName: "self",
+        Role: "QA Authenticated Member Persona",
+        Model: "inherit",
+        Workspace: "inherit",
+        WindowSession: userSession,
+        AccountInfo: CANONICAL_ACCOUNT_CATALOG.USER,
+        Prompt: `Act as an Authenticated Member testing universal CRUD & interactive tables in "${projectName}".
+1. Đăng nhập tại "${baseUrl}/dangnhap" bằng "user@app.test" / "Admin@123".
+2. Mở dashboard chính -> Thực hiện Universal In-Place Drawer/Modal CRUD (Bấm Thêm -> Form điền -> Lưu -> Assert dữ liệu mới).
+3. Thử nghiệm Tab filter, debounce search, và phân trang không làm reload trang.
+4. Sửa dữ liệu inline hoặc toggle switch -> Assert auto-save.
+5. Chụp ảnh: harness-out/screenshots/${userSession}/user-crud.png -> \`close_page(pageId)\`.`
+      };
+
+      return {
+        projectName,
+        domain: 'generic',
+        strategy: "multi_persona_journey",
+        personas: [publicWorker, userWorker]
+      };
+    }
+
+    // =========================================================================
+    // DOMAIN 5: DEFAULT HOSPITALITY SWARM PLAN (VietSage & Hotel PMS)
+    // =========================================================================
 
     const guestSession = this.generateWindowSessionId('guest');
     const receptionistSession = this.generateWindowSessionId('receptionist');
@@ -322,7 +543,8 @@ CÁC BƯỚC THAO TÁC CỤ THỂ (CLICK VÀO ĐÂU, CẬP NHẬT CÁI GÌ):
       const password = persona?.defaultPassword || persona?.password || persona?.auth?.password || null;
 
       // Extract module-specific business journeys
-      const moduleJourneys = listJourneysForModule(mod.id);
+      const domain = detectProjectDomain(config.browser?.routes || [], config);
+      const moduleJourneys = listJourneysForModule(mod.id, domain);
       const journeyGuides = moduleJourneys.map(j => generateStepByStepGuide(j)).join('\n\n');
 
       const authInstruction = (username && password)

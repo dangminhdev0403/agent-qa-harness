@@ -3,6 +3,44 @@
 
 ---
 
+## 0. HƯỚNG ĐI CHIẾN LƯỢC: AUTO TEST - THAO TÁC NGƯỜI DÙNG THẬT - TÌM LỖI - GHI LỖI TOÀN DIỆN
+Toàn bộ quy trình kiểm thử tự động của Harness được xây dựng trên 4 trụ cột cốt lõi:
+
+### Trụ Cột 1: Tự Động Phân Tích & Thích Ứng Đa Dự Án (Zero-Config Multi-Domain Engine)
+- Khi bật lệnh `agent-harness test:auto` (hoặc `agent-harness sync`), hệ thống tự động quét toàn bộ cây route và phân tích domain:
+  * **Hospitality (PMS/Hotel OS)**: Sơ đồ phòng, Tape Chart, Buồng phòng, Khai báo BCA, Channel Manager.
+  * **E-Commerce**: Duyệt danh mục, Thêm giỏ hàng, Mini-cart drawer, Checkout COD/Card, Nhà bán hàng xử lý đơn.
+  * **B2B SaaS**: Không gian làm việc, Quản lý dự án, Mời thành viên & phân quyền RBAC, Nâng cấp gói thuê bao Pro.
+  * **CRM / Booking Manager**: Phễu cơ hội Kanban kéo thả, Đặt lịch hẹn chuyên viên, Đổi lịch in-place.
+  * **Universal Generic**: Bảng dữ liệu Headless, Modal/Drawer CRUD, Sửa ô inline auto-save, Xóa an toàn.
+- Tự động nạp tài khoản kiểm thử và kịch bản nghiệp vụ tương ứng từ `CANONICAL_ACCOUNT_CATALOG` mà không bắt người dùng cấu hình thủ công.
+
+### Trụ Cột 2: Thao Tác Sâu Như Người Dùng Thật (Authentic Human Interaction Protocol)
+- **Tuyệt đối cấm kiểm thử qua loa**: Chấm dứt việc chỉ get link tĩnh hay đăng nhập rồi thoát!
+- Mô phỏng hành vi người dùng thật qua 4 tầng:
+  1. **Đăng nhập thật**: Điền credentials, lưu trữ JWT/session an toàn.
+  2. **Form CRUD Thực Tế**: Điền dữ liệu ngữ cảnh hợp lý (Họ tên, SĐT, CCCD, Tiền cọc, Địa chỉ), bấm nút Lưu.
+  3. **In-Place Tab Isolation**: Mở modal/drawer tại chỗ, không nhảy trang, bảo toàn thanh cuộn và bộ lọc.
+  4. **Tương tác Phức tạp**: Lọc tab không reload, sửa inline cell tự lưu, kéo thả (@dnd-kit drag-and-drop), và kiểm tra WebSocket đồng bộ 2 cửa sổ realtime.
+
+### Trụ Cột 3: Bộ Dò Lỗi Đa Tầng (Deep Bug Detector & Oracles)
+Hệ thống tự động phát hiện và ghi nhận 6 loại khiếm khuyết phần mềm:
+1. **Lỗi Runtime/Console**: Bắt mọi `console.error`, unhandled rejections, TypeError, React hydration mismatch.
+2. **Lỗi Mạng/API**: Bắt request 4xx, 5xx, failed fetch/xhr, timeout.
+3. **Lỗi Nút Chết (Unresponsive Clicks)**: Bấm nút nhưng DOM không phản hồi, không modal, không spinner, không API call.
+4. **Lỗi Thiết Kế UI**: Cỡ chữ vi phạm sàn font < 12px, tiêu đề thiếu `text-balance` gãy dòng cộc lốc.
+5. **Lỗi Database Schema**: Bắt lỗi Prisma P2022 thiếu cột, P2025 không tìm thấy record, vi phạm Foreign Key.
+6. **Lỗi An Ninh RBAC**: Bắt lỗi 403 Forbidden chặn quyền.
+
+### Trụ Cột 4: Ghi Lỗi Có Cấu Trúc & Phân Định Ranh Giới (Incident Dossier & Fix Boundary)
+- Tự động xuất hồ sơ sự cố vào `harness-out/INCIDENT_PACK.json` và `harness-out/SUMMARY_REPORT.md`.
+- **Ranh giới Sửa vs Báo cáo (Fix vs No-Fix Boundary)**:
+  * **Nhóm 1: Lỗi Database (REPORT_ONLY_DATABASE)** -> CẤM tự sửa schema / ALTER TABLE; lập hồ sơ gửi DBA kèm script SQL đề xuất.
+  * **Nhóm 2: Lỗi Phân Quyền RBAC (REPORT_ONLY_RBAC)** -> CẤM gỡ `@UseGuards()`; báo cáo role thiếu cho lead; cho phép sửa UI Toast hiển thị thân thiện.
+  * **Nhóm 3: Lỗi UI/Frontend (AUTO_FIXABLE_UI)** -> Cho phép Subagent tự động sửa chữa an toàn trên nhánh cô lập `Workspace: 'branch'`.
+
+---
+
 ## 1. AGENT OPERATIONAL STATE MACHINE
 ```text
 [Prompt Received]

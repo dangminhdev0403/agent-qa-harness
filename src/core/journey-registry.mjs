@@ -8,66 +8,213 @@
 /**
  * Standard Canonical Account Catalog across VietSage & Hospitality Systems
  */
-export const CANONICAL_ACCOUNT_CATALOG = {
-  GUEST: {
-    role: "GUEST",
-    title: "Khách Lưu Trú Phòng QR (Guest OS)",
-    authRequired: false,
-    entryUrl: "/g/DEMO_QR_ROOM_101",
-    description: "Khách quét mã QR tại phòng, không cần tài khoản, tự động liên kết phiên phòng"
+export const DOMAIN_ACCOUNT_CATALOGS = {
+  hospitality: {
+    GUEST: {
+      role: "GUEST",
+      title: "Khách Lưu Trú Phòng QR (Guest OS)",
+      authRequired: false,
+      entryUrl: "/g/DEMO_QR_ROOM_101",
+      description: "Khách quét mã QR tại phòng, không cần tài khoản, tự động liên kết phiên phòng"
+    },
+    FRONTDESK: {
+      role: "HOTEL_FRONTDESK",
+      title: "Nhân Viên Lễ Tân (Frontdesk Operations)",
+      authRequired: true,
+      loginUrl: "/dangnhap",
+      defaultUsername: "frontdesk@vietsage.vn",
+      defaultPassword: "Admin@123",
+      dashboardUrl: "/staff/front-desk",
+      description: "Tiếp nhận yêu cầu dịch vụ buồng phòng, check-in, check-out, điều phối sơ đồ phòng"
+    },
+    HOUSEKEEPING: {
+      role: "HOUSEKEEPING",
+      title: "Nhân Viên Buồng Phòng (Housekeeping Staff)",
+      authRequired: true,
+      loginUrl: "/dangnhap",
+      defaultUsername: "housekeeping@vietsage.vn",
+      defaultPassword: "Admin@123",
+      dashboardUrl: "/hotels/HCA_HOMESTAY/rooms",
+      description: "Quản lý vệ sinh phòng, dọn phòng, xác nhận phòng sạch sẵn sàng đón khách (Room Ready)"
+    },
+    OWNER: {
+      role: "TENANT_OWNER",
+      title: "Chủ Khách Sạn & Quản Trị Khách Sạn (Hotel Owner / General Manager)",
+      authRequired: true,
+      loginUrl: "/dangnhap",
+      defaultUsername: "thucvn@gmail.com",
+      fallbackUsername: "tenant@vietsage.vn",
+      defaultPassword: "Admin@123",
+      dashboardUrl: "/owner/dashboard",
+      description: "Quản lý tồn kho phòng, biểu giá ARI, kênh bán OTA (Channel Manager), báo cáo tài chính"
+    },
+    SUPER_ADMIN: {
+      role: "SUPER_ADMIN",
+      title: "Quản Trị Viên Nền Tảng (Platform Super Admin)",
+      authRequired: true,
+      loginUrl: "/dangnhap",
+      defaultUsername: "admin@vietsage.vn",
+      defaultPassword: "Admin@123",
+      dashboardUrl: "/admin/dashboard",
+      description: "Quản lý toàn bộ khách sạn, người dùng, quyền hạn hệ thống, cấu hình nền tảng"
+    },
+    SERVICE_STAFF: {
+      role: "SERVICE_STAFF",
+      title: "Nhân Viên Đối Tác Cung Ứng Dịch Vụ (Marketplace Service Staff)",
+      authRequired: true,
+      loginUrl: "/dangnhap",
+      defaultUsername: "service@vietsage.vn",
+      defaultPassword: "Admin@123",
+      dashboardUrl: "/service/orders",
+      description: "Tiếp nhận và xử lý các đơn đặt tour du lịch, thuê xe, ẩm thực đối tác từ khách sạn"
+    }
   },
-  FRONTDESK: {
-    role: "HOTEL_FRONTDESK",
-    title: "Nhân Viên Lễ Tân (Frontdesk Operations)",
-    authRequired: true,
-    loginUrl: "/dangnhap",
-    defaultUsername: "frontdesk@vietsage.vn",
-    defaultPassword: "Admin@123",
-    dashboardUrl: "/staff/front-desk",
-    description: "Tiếp nhận yêu cầu dịch vụ buồng phòng, check-in, check-out, điều phối sơ đồ phòng"
+  ecommerce: {
+    SHOPPER: {
+      role: "SHOPPER",
+      title: "Khách Mua Hàng Vãng Lai (Guest Shopper)",
+      authRequired: false,
+      entryUrl: "/shop",
+      description: "Khách hàng duyệt danh mục, thêm vào giỏ hàng và tiến hành thanh toán"
+    },
+    CUSTOMER: {
+      role: "CUSTOMER",
+      title: "Khách Hàng Đăng Nhập (Registered Customer)",
+      authRequired: true,
+      loginUrl: "/dangnhap",
+      defaultUsername: "customer@shop.test",
+      defaultPassword: "Admin@123",
+      dashboardUrl: "/account/orders",
+      description: "Quản lý đơn hàng cá nhân, sổ địa chỉ, theo dõi lịch trình giao nhận"
+    },
+    MERCHANT: {
+      role: "MERCHANT",
+      title: "Nhà Bán Hàng & Đối Tác (Merchant / Seller)",
+      authRequired: true,
+      loginUrl: "/dangnhap",
+      defaultUsername: "merchant@shop.test",
+      defaultPassword: "Admin@123",
+      dashboardUrl: "/vendor/orders",
+      description: "Tiếp nhận đơn hàng mới, cập nhật mã vận đơn, quản lý tồn kho sản phẩm"
+    },
+    STORE_ADMIN: {
+      role: "STORE_ADMIN",
+      title: "Quản Trị Sàn Thương Mại (Store Platform Admin)",
+      authRequired: true,
+      loginUrl: "/dangnhap",
+      defaultUsername: "admin@shop.test",
+      defaultPassword: "Admin@123",
+      dashboardUrl: "/admin/dashboard",
+      description: "Cấu hình cổng thanh toán, chương trình khuyến mãi, quản trị toàn sàn"
+    }
   },
-  HOUSEKEEPING: {
-    role: "HOUSEKEEPING",
-    title: "Nhân Viên Buồng Phòng (Housekeeping Staff)",
-    authRequired: true,
-    loginUrl: "/dangnhap",
-    defaultUsername: "housekeeping@vietsage.vn",
-    defaultPassword: "Admin@123",
-    dashboardUrl: "/hotels/HCA_HOMESTAY/rooms",
-    description: "Quản lý vệ sinh phòng, dọn phòng, xác nhận phòng sạch sẵn sàng đón khách (Room Ready)"
+  saas: {
+    WORKSPACE_OWNER: {
+      role: "WORKSPACE_OWNER",
+      title: "Chủ Sở Hữu Tổ Chức (SaaS Workspace Owner)",
+      authRequired: true,
+      loginUrl: "/dangnhap",
+      defaultUsername: "owner@saas.test",
+      defaultPassword: "Admin@123",
+      dashboardUrl: "/settings/billing",
+      description: "Quản lý thuê bao Pro, quyết toán hóa đơn, mời thành viên và phân quyền"
+    },
+    TEAM_MEMBER: {
+      role: "MEMBER",
+      title: "Thành Viên Không Gian Làm Việc (Team Member)",
+      authRequired: true,
+      loginUrl: "/dangnhap",
+      defaultUsername: "member@saas.test",
+      defaultPassword: "Admin@123",
+      dashboardUrl: "/workspace",
+      description: "Tạo dự án mới, cập nhật bảng công việc, chia sẻ tài liệu cộng tác"
+    },
+    SUPER_ADMIN: {
+      role: "SUPER_ADMIN",
+      title: "Quản Trị Viên Nền Tảng SaaS (Platform Super Admin)",
+      authRequired: true,
+      loginUrl: "/dangnhap",
+      defaultUsername: "admin@saas.test",
+      defaultPassword: "Admin@123",
+      dashboardUrl: "/admin",
+      description: "Giám sát tenant, phân bổ hạn ngạch tài nguyên, kiểm soát an ninh hệ thống"
+    }
   },
-  OWNER: {
-    role: "TENANT_OWNER",
-    title: "Chủ Khách Sạn & Quản Trị Khách Sạn (Hotel Owner / General Manager)",
-    authRequired: true,
-    loginUrl: "/dangnhap",
-    defaultUsername: "thucvn@gmail.com",
-    fallbackUsername: "tenant@vietsage.vn",
-    defaultPassword: "Admin@123",
-    dashboardUrl: "/owner/dashboard",
-    description: "Quản lý tồn kho phòng, biểu giá ARI, kênh bán OTA (Channel Manager), báo cáo tài chính"
+  crm: {
+    CLIENT: {
+      role: "CLIENT",
+      title: "Khách Hàng Đặt Lịch (Client Portal)",
+      authRequired: false,
+      entryUrl: "/booking",
+      description: "Khách hàng tự chọn chuyên viên, khung giờ hẹn và đổi lịch trực tiếp"
+    },
+    SALES_REP: {
+      role: "SALES_REP",
+      title: "Nhân Viên Kinh Doanh (Sales Representative)",
+      authRequired: true,
+      loginUrl: "/dangnhap",
+      defaultUsername: "sales@crm.test",
+      defaultPassword: "Admin@123",
+      dashboardUrl: "/pipeline",
+      description: "Tiếp cận khách tiềm năng, quản lý cơ hội và kéo thả phễu bán hàng Kanban"
+    },
+    SALES_MANAGER: {
+      role: "SALES_MANAGER",
+      title: "Trưởng Phòng Kinh Doanh & Vận Hành (Sales Manager)",
+      authRequired: true,
+      loginUrl: "/dangnhap",
+      defaultUsername: "manager@crm.test",
+      defaultPassword: "Admin@123",
+      dashboardUrl: "/calendar",
+      description: "Điều phối lịch chuyên viên, phê duyệt hợp đồng, theo dõi báo cáo doanh thu"
+    }
   },
-  SUPER_ADMIN: {
-    role: "SUPER_ADMIN",
-    title: "Quản Trị Viên Nền Tảng (Platform Super Admin)",
-    authRequired: true,
-    loginUrl: "/dangnhap",
-    defaultUsername: "admin@vietsage.vn",
-    defaultPassword: "Admin@123",
-    dashboardUrl: "/admin/dashboard",
-    description: "Quản lý toàn bộ khách sạn, người dùng, quyền hạn hệ thống, cấu hình nền tảng"
-  },
-  SERVICE_STAFF: {
-    role: "SERVICE_STAFF",
-    title: "Nhân Viên Đối Tác Cung Ứng Dịch Vụ (Marketplace Service Staff)",
-    authRequired: true,
-    loginUrl: "/dangnhap",
-    defaultUsername: "service@vietsage.vn",
-    defaultPassword: "Admin@123",
-    dashboardUrl: "/service/orders",
-    description: "Tiếp nhận và xử lý các đơn đặt tour du lịch, thuê xe, ẩm thực đối tác từ khách sạn"
+  generic: {
+    USER: {
+      role: "USER",
+      title: "Người Dùng Tiêu Chuẩn (Standard Member)",
+      authRequired: true,
+      loginUrl: "/dangnhap",
+      defaultUsername: "user@app.test",
+      defaultPassword: "Admin@123",
+      dashboardUrl: "/dashboard",
+      description: "Thực hiện các thao tác CRUD cơ bản, xem danh sách, cập nhật hồ sơ"
+    },
+    ADMIN: {
+      role: "ADMIN",
+      title: "Quản Trị Viên Ứng Dụng (System Administrator)",
+      authRequired: true,
+      loginUrl: "/dangnhap",
+      defaultUsername: "admin@app.test",
+      defaultPassword: "Admin@123",
+      dashboardUrl: "/admin",
+      description: "Toàn quyền quản trị danh mục, người dùng, cài đặt hệ thống"
+    }
   }
 };
+
+/**
+ * Standard Canonical Account Catalog across All Domains
+ */
+export const CANONICAL_ACCOUNT_CATALOG = {
+  ...DOMAIN_ACCOUNT_CATALOGS.hospitality,
+  ...DOMAIN_ACCOUNT_CATALOGS.ecommerce,
+  ...DOMAIN_ACCOUNT_CATALOGS.saas,
+  ...DOMAIN_ACCOUNT_CATALOGS.crm,
+  ...DOMAIN_ACCOUNT_CATALOGS.generic
+};
+
+/**
+ * Resolve project-specific account catalog based on domain and config
+ */
+export function resolveAccountCatalog(domain = 'hospitality', config = {}) {
+  const domainCatalog = DOMAIN_ACCOUNT_CATALOGS[domain] || DOMAIN_ACCOUNT_CATALOGS.generic;
+  const projectPersonas = config.personas || {};
+  return {
+    ...domainCatalog,
+    ...projectPersonas
+  };
+}
 
 export const UNIVERSAL_INTERACTIVE_JOURNEYS = [
   // =========================================================================
@@ -941,6 +1088,652 @@ export const UNIVERSAL_INTERACTIVE_JOURNEYS = [
         ]
       }
     ]
+  },
+
+  // =========================================================================
+  // JOURNEY 12: E-COMMERCE CART & CHECKOUT (BROWSE -> MINI-CART -> ORDER)
+  // =========================================================================
+  {
+    id: "ecom-browse-cart-checkout-flow",
+    name: "Chu Trình Mua Hàng E-Commerce (Browse -> Add to Cart -> In-Place MiniCart -> Checkout)",
+    type: "SINGLE_ROLE_INTERACTION",
+    role: "SHOPPER",
+    category: "ECOMMERCE_OPS",
+    account: CANONICAL_ACCOUNT_CATALOG.SHOPPER,
+    description: "Khách hàng duyệt danh mục sản phẩm, lọc theo phân loại, thêm sản phẩm vào giỏ hàng tại chỗ, mở Mini-cart Drawer, điền thông tin giao hàng và đặt hàng thành công",
+    startUrl: "/shop",
+    steps: [
+      {
+        action: "navigate",
+        url: "/shop",
+        guide: "Mở trang cửa hàng hoặc danh mục sản phẩm (/shop hoặc /products)"
+      },
+      {
+        action: "snapshot",
+        guide: "Gọi take_snapshot(pageId) lấy danh sách thẻ sản phẩm và bộ lọc"
+      },
+      {
+        action: "click",
+        targetName: "Thẻ sản phẩm hoặc nút 'Thêm vào giỏ hàng'",
+        selector: "button:has-text('Thêm vào giỏ'), [data-action='add-to-cart'], .product-card button",
+        guide: "Click thêm sản phẩm đầu tiên vào giỏ hàng"
+      },
+      {
+        action: "assert_drawer",
+        targetName: "Mini-Cart Drawer Tại Chỗ",
+        selector: "[role='dialog'], [data-state='open'], .mini-cart-drawer",
+        guide: "Xác nhận Mini-Cart Drawer mở trượt tại chỗ (In-Place Tab Isolation: 0 reload) hiển thị 1 sản phẩm"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Tiến hành thanh toán'",
+        selector: "button:has-text('Thanh toán'), a[href*='checkout'], button:has-text('Đặt hàng')",
+        guide: "Click tiến hành chuyển sang bước điền thông tin đơn hàng"
+      },
+      {
+        action: "fill",
+        targetName: "Ô Họ và tên người nhận",
+        selector: "input[name*='name'], input[placeholder*='tên'], input[name*='fullName']",
+        value: "Nguyễn Văn Mua Hàng (Test Auto)",
+        guide: "Điền họ tên người nhận hàng"
+      },
+      {
+        action: "fill",
+        targetName: "Ô Số điện thoại",
+        selector: "input[name*='phone'], input[type='tel']",
+        value: "0901234567",
+        guide: "Điền số điện thoại nhận hàng"
+      },
+      {
+        action: "fill",
+        targetName: "Ô Địa chỉ giao hàng",
+        selector: "input[name*='address'], textarea[name*='address']",
+        value: "123 Đường Mẫu, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+        guide: "Điền địa chỉ giao nhận"
+      },
+      {
+        action: "click",
+        targetName: "Phương thức thanh toán COD",
+        selector: "input[value='COD'], label:has-text('COD'), button:has-text('Khi nhận hàng')",
+        guide: "Chọn phương thức thanh toán khi nhận hàng (COD)"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Xác nhận đặt hàng'",
+        selector: "button[type='submit'], button:has-text('Xác nhận đặt hàng'), button:has-text('Hoàn tất')",
+        guide: "Bấm hoàn tất đơn hàng"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận hiển thị trang/thông báo cảm ơn kèm mã đơn hàng ORD-... và giỏ hàng được làm rỗng"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 13: E-COMMERCE MERCHANT FULFILLMENT (TIẾP NHẬN & XỬ LÝ ĐƠN HÀNG)
+  // =========================================================================
+  {
+    id: "ecom-merchant-fulfillment-flow",
+    name: "Chu Trình Xử Lý Đơn Hàng Nhà Bán (Merchant Order Acceptance & Shipment)",
+    type: "SINGLE_ROLE_INTERACTION",
+    role: "MERCHANT",
+    category: "ECOMMERCE_OPS",
+    account: CANONICAL_ACCOUNT_CATALOG.MERCHANT,
+    description: "Nhà bán hàng vào cổng quản trị đơn hàng, tiếp nhận đơn mới, nhập mã vận đơn và chuyển trạng thái sang Đang vận chuyển",
+    startUrl: "/vendor/orders",
+    steps: [
+      {
+        action: "navigate",
+        url: "/vendor/orders",
+        guide: "Mở danh sách đơn hàng nhà bán"
+      },
+      {
+        action: "snapshot",
+        guide: "Gọi take_snapshot(pageId) lấy danh sách đơn chờ xử lý"
+      },
+      {
+        action: "click",
+        targetName: "Đơn hàng mới nhất",
+        selector: "tr:has-text('PENDING'), [data-status='pending'], .order-row:first-child",
+        guide: "Click vào đơn hàng -> Drawer chi tiết mở tại chỗ"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Tiếp nhận đơn hàng'",
+        selector: "button:has-text('Tiếp nhận'), button:has-text('Xác nhận đơn')",
+        guide: "Click tiếp nhận đơn hàng"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận badge đơn hàng chuyển sang 'ĐÃ TIẾP NHẬN' / 'CONFIRMED' mà không reload trang"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 14: E-COMMERCE PRODUCT SETUP & INVENTORY (TẠO SẢN PHẨM & TỒN KHO)
+  // =========================================================================
+  {
+    id: "ecom-product-crud-flow",
+    name: "Quản Trị Danh Mục Sản Phẩm & Tồn Kho (Product Setup CRUD & Inline Stock Edit)",
+    type: "SINGLE_ROLE_INTERACTION",
+    role: "MERCHANT",
+    category: "ECOMMERCE_OPS",
+    account: CANONICAL_ACCOUNT_CATALOG.MERCHANT,
+    description: "Nhà bán hàng mở modal thêm sản phẩm mới, điền tiêu đề, SKU, giá bán, số lượng tồn kho và lưu tại chỗ; sau đó sửa trực tiếp số lượng tồn kho trên bảng",
+    startUrl: "/vendor/products",
+    steps: [
+      {
+        action: "navigate",
+        url: "/vendor/products",
+        guide: "Mở màn hình Quản lý sản phẩm"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Thêm sản phẩm mới'",
+        selector: "button:has-text('Thêm sản phẩm'), button:has-text('Tạo sản phẩm'), [data-action='create-product']",
+        guide: "Click mở Modal Tạo sản phẩm in-place"
+      },
+      {
+        action: "fill",
+        targetName: "Tên sản phẩm",
+        selector: "input[name*='title'], input[name*='name'], input[placeholder*='sản phẩm']",
+        value: "Áo Thun Cotton Cao Cấp 100% (Test Auto)",
+        guide: "Nhập tên sản phẩm"
+      },
+      {
+        action: "fill",
+        targetName: "Mã SKU",
+        selector: "input[name*='sku'], input[placeholder*='SKU']",
+        value: "TSHIRT-TEST-001",
+        guide: "Nhập mã SKU định danh"
+      },
+      {
+        action: "fill",
+        targetName: "Giá bán (VND)",
+        selector: "input[name*='price'], input[placeholder*='giá']",
+        value: "250000",
+        guide: "Nhập đơn giá bán 250.000 VND"
+      },
+      {
+        action: "fill",
+        targetName: "Số lượng tồn kho",
+        selector: "input[name*='stock'], input[name*='quantity']",
+        value: "100",
+        guide: "Nhập số lượng tồn kho ban đầu"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Lưu sản phẩm'",
+        selector: "button[type='submit'], button:has-text('Lưu')",
+        guide: "Bấm lưu sản phẩm mới"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận modal đóng, sản phẩm mới xuất hiện trên bảng dữ liệu"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 15: SAAS TEAM MEMBER INVITATION & RBAC (MỜI THÀNH VIÊN & PHÂN QUYỀN)
+  // =========================================================================
+  {
+    id: "saas-team-invite-rbac-flow",
+    name: "Chu Trình Mời Thành Viên & Phân Quyền Nhóm (Team Member Invitation & Role RBAC)",
+    type: "SINGLE_ROLE_INTERACTION",
+    role: "WORKSPACE_OWNER",
+    category: "SAAS_OPS",
+    account: CANONICAL_ACCOUNT_CATALOG.WORKSPACE_OWNER,
+    description: "Chủ sở hữu tổ chức mở cài đặt nhóm, mở modal mời thành viên, nhập email đồng nghiệp, chọn vai trò và gửi lời mời tại chỗ",
+    startUrl: "/settings/team",
+    steps: [
+      {
+        action: "navigate",
+        url: "/settings/team",
+        guide: "Mở màn hình Quản lý thành viên & Phân quyền tổ chức"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Mời thành viên'",
+        selector: "button:has-text('Mời thành viên'), button:has-text('Thêm thành viên'), [data-action='invite-member']",
+        guide: "Click mở Modal Mời thành viên tại chỗ"
+      },
+      {
+        action: "fill",
+        targetName: "Email thành viên được mời",
+        selector: "input[type='email'], input[name*='email']",
+        value: "dongnghiep@saas.test",
+        guide: "Điền email của thành viên mới"
+      },
+      {
+        action: "click",
+        targetName: "Lựa chọn vai trò (Role)",
+        selector: "select[name*='role'], button[role='combobox']",
+        guide: "Chọn vai trò MEMBER hoặc ADMIN"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Gửi lời mời'",
+        selector: "button[type='submit'], button:has-text('Gửi lời mời'), button:has-text('Mời')",
+        guide: "Bấm nút gửi lời mời tham gia workspace"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận modal đóng, thông báo SweetAlert2/Toast báo thành công, hàng mới xuất hiện trên bảng thành viên với trạng thái PENDING/INVITED"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 16: SAAS SUBSCRIPTION UPGRADE (NÂNG CẤP GÓI DỊCH VỤ SAAS)
+  // =========================================================================
+  {
+    id: "saas-subscription-upgrade-flow",
+    name: "Chu Trình Nâng Cấp Gói Dịch Vụ SaaS (Subscription Upgrade & Billing In-Place)",
+    type: "SINGLE_ROLE_INTERACTION",
+    role: "WORKSPACE_OWNER",
+    category: "SAAS_OPS",
+    account: CANONICAL_ACCOUNT_CATALOG.WORKSPACE_OWNER,
+    description: "Chủ workspace vào mục Thanh toán/Gói dịch vụ, bấm Nâng cấp gói Pro, chọn kỳ thanh toán năm/tháng và xác nhận nâng cấp tại chỗ",
+    startUrl: "/settings/billing",
+    steps: [
+      {
+        action: "navigate",
+        url: "/settings/billing",
+        guide: "Mở màn hình Quản lý gói thuê bao & Hóa đơn"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Nâng cấp lên gói PRO'",
+        selector: "button:has-text('Nâng cấp'), button:has-text('Chọn gói PRO'), [data-plan='pro']",
+        guide: "Click nút nâng cấp gói dịch vụ"
+      },
+      {
+        action: "assert_modal",
+        targetName: "Modal Xác Nhận Nâng Cấp Gói",
+        selector: "dialog[modal], [role='dialog']",
+        guide: "Xác nhận Modal thanh toán/nâng cấp mở tại chỗ (Zero redirect)"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Xác nhận thanh toán / Nâng cấp'",
+        selector: "button:has-text('Xác nhận'), button:has-text('Thanh toán')",
+        guide: "Bấm xác nhận nâng cấp gói"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận badge gói dịch vụ chuyển sang 'PRO_ACTIVE' / 'GÓI CHUYÊN NGHIỆP' tức thời"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 17: SAAS WORKSPACE PROJECT CRUD (QUẢN LÝ DỰ ÁN WORKSPACE)
+  // =========================================================================
+  {
+    id: "saas-workspace-project-crud-flow",
+    name: "Quản Trị Dự Án Không Gian Làm Việc (Workspace Project CRUD & In-Place Edit)",
+    type: "SINGLE_ROLE_INTERACTION",
+    role: "MEMBER",
+    category: "SAAS_OPS",
+    account: CANONICAL_ACCOUNT_CATALOG.TEAM_MEMBER,
+    description: "Thành viên tạo dự án mới qua modal, điền tên dự án, đổi tên tại chỗ và xóa dự án kèm hộp thoại xác nhận",
+    startUrl: "/workspace",
+    steps: [
+      {
+        action: "navigate",
+        url: "/workspace",
+        guide: "Mở không gian làm việc chính"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Tạo dự án mới'",
+        selector: "button:has-text('Tạo dự án'), button:has-text('Dự án mới'), [data-action='create-project']",
+        guide: "Click mở Modal tạo dự án"
+      },
+      {
+        action: "fill",
+        targetName: "Tên dự án",
+        selector: "input[name*='name'], input[placeholder*='dự án']",
+        value: "Dự Án Nâng Cấp Hệ Thống Q4 (Auto Test)",
+        guide: "Điền tên dự án"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Lưu / Tạo'",
+        selector: "button[type='submit'], button:has-text('Tạo')",
+        guide: "Lưu dự án mới"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận thẻ dự án mới xuất hiện trên lưới làm việc"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 18: CRM LEAD & PIPELINE KANBAN (KÉO THẢ PHỄU BÁN HÀNG @dnd-kit)
+  // =========================================================================
+  {
+    id: "crm-lead-pipeline-stage-flow",
+    name: "Quản Lý Cơ Hội Bán Hàng & Kéo Thả Pipeline Kanban (CRM Deal Pipeline @dnd-kit)",
+    type: "SINGLE_ROLE_INTERACTION",
+    role: "SALES_REP",
+    category: "CRM_OPS",
+    account: CANONICAL_ACCOUNT_CATALOG.SALES_REP,
+    description: "Nhân viên kinh doanh tạo cơ hội bán hàng mới, điền giá trị hợp đồng, lưu tại chỗ và kéo thả thẻ Deal từ cột 'Tiếp cận ban đầu' sang cột 'Đàm phán'",
+    startUrl: "/pipeline",
+    steps: [
+      {
+        action: "navigate",
+        url: "/pipeline",
+        guide: "Mở bảng Kanban phễu bán hàng"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Thêm cơ hội mới (Deal)'",
+        selector: "button:has-text('Thêm cơ hội'), button:has-text('Tạo Deal'), [data-action='add-deal']",
+        guide: "Click mở modal tạo deal mới"
+      },
+      {
+        action: "fill",
+        targetName: "Tên cơ hội hợp đồng",
+        selector: "input[name*='title'], input[name*='name'], input[placeholder*='cơ hội']",
+        value: "Hợp đồng Cung Ứng Vật Tư 500M (Test Deal)",
+        guide: "Điền tên cơ hội"
+      },
+      {
+        action: "fill",
+        targetName: "Giá trị hợp đồng (VND)",
+        selector: "input[name*='amount'], input[name*='value'], input[placeholder*='giá trị']",
+        value: "500000000",
+        guide: "Nhập giá trị hợp đồng 500.000.000 VND"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Lưu Deal'",
+        selector: "button[type='submit'], button:has-text('Lưu')",
+        guide: "Lưu cơ hội vào cột Lead"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận thẻ deal xuất hiện trong cột đầu tiên của Kanban"
+      },
+      {
+        action: "drag",
+        targetName: "Kéo thẻ Deal sang cột tiếp theo",
+        guide: "Gọi lệnh MCP drag(pageId, from_uid, to_uid) kéo thẻ sang cột Đàm phán (PROPOSAL)"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận thẻ Deal chuyển cột thành công, tổng tiền cột tự động tính lại mà không reload trang"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 19: CRM APPOINTMENT BOOKING & RESCHEDULE (ĐẶT LỊCH HẸN & ĐỔI LỊCH)
+  // =========================================================================
+  {
+    id: "crm-appointment-booking-flow",
+    name: "Chu Trình Đặt Lịch Hẹn & Đổi Lịch In-Place (Service Appointment Booking & Reschedule)",
+    type: "SINGLE_ROLE_INTERACTION",
+    role: "CLIENT",
+    category: "CRM_OPS",
+    account: CANONICAL_ACCOUNT_CATALOG.CLIENT,
+    description: "Khách hàng chọn dịch vụ tư vấn, chọn chuyên viên, chọn khung giờ trống trên lưới lịch, điền thông tin và xác nhận; sau đó thao tác đổi lịch hẹn tại chỗ",
+    startUrl: "/booking",
+    steps: [
+      {
+        action: "navigate",
+        url: "/booking",
+        guide: "Mở trang đặt lịch hẹn trực tuyến"
+      },
+      {
+        action: "click",
+        targetName: "Gói dịch vụ hoặc chuyên viên tư vấn",
+        selector: "button:has-text('Tư vấn'), [data-service-id], .service-slot-card",
+        guide: "Chọn dịch vụ cần đặt"
+      },
+      {
+        action: "click",
+        targetName: "Khung giờ hẹn trống (Time Slot)",
+        selector: "button:has-text('14:00'), button:has-text('15:00'), .time-slot-available",
+        guide: "Chọn khung giờ hẹn phù hợp"
+      },
+      {
+        action: "fill",
+        targetName: "Họ và tên khách hẹn",
+        selector: "input[name*='name'], input[placeholder*='họ tên']",
+        value: "Hoàng Minh (Test Lịch Hẹn)",
+        guide: "Điền tên khách"
+      },
+      {
+        action: "fill",
+        targetName: "Số điện thoại",
+        selector: "input[name*='phone'], input[type='tel']",
+        value: "0918888888",
+        guide: "Điền số điện thoại liên lạc"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Xác nhận đặt lịch'",
+        selector: "button[type='submit'], button:has-text('Xác nhận đặt lịch')",
+        guide: "Bấm xác nhận tạo cuộc hẹn"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận hiển thị mã lịch hẹn BK-... kèm thời gian đã chọn"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 20: UNIVERSAL IN-PLACE DRAWER/MODAL CRUD (ÁP DỤNG CHO MỌI WEB APP)
+  // =========================================================================
+  {
+    id: "universal-crud-drawer-flow",
+    name: "Chu Trình Tạo Mới & Chỉnh Sửa Tại Chỗ (Universal In-Place Drawer / Modal CRUD)",
+    type: "UNIVERSAL_INTERACTION",
+    role: "USER",
+    category: "UNIVERSAL_GENERIC",
+    account: CANONICAL_ACCOUNT_CATALOG.USER,
+    description: "Áp dụng cho mọi ứng dụng web: Mở bảng dữ liệu -> Bấm 'Thêm mới' -> Drawer/Modal mở tại chỗ (In-Place Isolation) -> Điền form -> Lưu -> Kiểm tra hàng mới xuất hiện ngay trên bảng mà không reload trang",
+    startUrl: "/dashboard",
+    steps: [
+      {
+        action: "navigate",
+        url: "/dashboard",
+        guide: "Mở bảng dữ liệu hoặc không gian làm việc chính"
+      },
+      {
+        action: "snapshot",
+        guide: "Gọi take_snapshot(pageId) lấy danh sách các nút hành động"
+      },
+      {
+        action: "click",
+        targetName: "Nút Thêm mới / Tạo mới / Create",
+        selector: "button:has-text('Thêm'), button:has-text('Tạo mới'), button:has-text('Create'), button:has-text('New'), [data-action='create']",
+        guide: "Click nút mở Drawer / Modal tạo mới tại chỗ"
+      },
+      {
+        action: "assert_modal",
+        targetName: "Modal / Drawer Tại Chỗ",
+        selector: "dialog[modal], [role='dialog'], [data-state='open']",
+        guide: "Xác nhận Modal/Drawer mở tại chỗ (In-Place Tab Isolation: không reload, không đổi trang)"
+      },
+      {
+        action: "fill",
+        targetName: "Ô tiêu đề hoặc trường dữ liệu đầu tiên",
+        selector: "input[type='text']:not([readonly]), textarea",
+        value: "Dữ liệu kiểm thử nghiệp vụ tự động (Universal Auto Test)",
+        guide: "Nhập dữ liệu vào trường input"
+      },
+      {
+        action: "click",
+        targetName: "Nút Lưu / Xác nhận / Submit",
+        selector: "button[type='submit'], button:has-text('Lưu'), button:has-text('Xác nhận'), button:has-text('Save')",
+        guide: "Click lưu form"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận Modal/Drawer đóng an toàn, bảng dữ liệu cập nhật thêm bản ghi mới mà không gián đoạn vị trí cuộn hay bộ lọc"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 21: UNIVERSAL TABLE FILTER, SEARCH & PAGINATION
+  // =========================================================================
+  {
+    id: "universal-table-filter-pagination-flow",
+    name: "Chu Trình Lọc, Tìm Kiếm Debounce & Phân Trang Headless (Table Filter & Pagination)",
+    type: "UNIVERSAL_INTERACTION",
+    role: "USER",
+    category: "UNIVERSAL_GENERIC",
+    account: CANONICAL_ACCOUNT_CATALOG.USER,
+    description: "Nhập từ khóa tìm kiếm -> Assert kết quả lọc debounce -> Bấm tab trạng thái -> Bấm chuyển trang -> Kiểm tra đồng bộ state qua URL shallow query param không gián đoạn giao diện",
+    startUrl: "/dashboard",
+    steps: [
+      {
+        action: "navigate",
+        url: "/dashboard",
+        guide: "Mở bảng dữ liệu"
+      },
+      {
+        action: "fill",
+        targetName: "Ô tìm kiếm (Search Input)",
+        selector: "input[type='search'], input[placeholder*='tìm'], input[placeholder*='Search']",
+        value: "Test",
+        guide: "Nhập từ khóa tìm kiếm"
+      },
+      {
+        action: "click",
+        targetName: "Tab lọc trạng thái (Filter Tab)",
+        selector: "[role='tab']:not([aria-selected='true']), button[data-filter]",
+        guide: "Click chuyển đổi tab lọc dữ liệu"
+      },
+      {
+        action: "click",
+        targetName: "Nút chuyển trang kế tiếp (Next Page)",
+        selector: "button:has-text('Tiếp'), button:has-text('Next'), button[aria-label='Next page'], [data-action='next-page']",
+        guide: "Click chuyển sang trang dữ liệu kế tiếp"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận bảng dữ liệu cập nhật mượt mà theo trang mới mà KHÔNG làm giật trang hay reload trình duyệt"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 22: UNIVERSAL INLINE EDIT & AUTO-SAVE
+  // =========================================================================
+  {
+    id: "universal-inline-edit-autosave-flow",
+    name: "Chu Trình Sửa Trực Tiếp Trên Ô Dữ Liệu & Tự Động Lưu (Inline Cell Editing & Auto-Save)",
+    type: "UNIVERSAL_INTERACTION",
+    role: "USER",
+    category: "UNIVERSAL_GENERIC",
+    account: CANONICAL_ACCOUNT_CATALOG.USER,
+    description: "Click vào ô dữ liệu trên bảng -> Chuyển thành input textbox focused -> Sửa nội dung -> Nhấn Enter hoặc click ra ngoài -> Assert auto-save cập nhật tại chỗ",
+    startUrl: "/dashboard",
+    steps: [
+      {
+        action: "navigate",
+        url: "/dashboard",
+        guide: "Mở bảng dữ liệu có hỗ trợ sửa inline"
+      },
+      {
+        action: "click",
+        targetName: "Ô dữ liệu có thể sửa trực tiếp hoặc toggle switch",
+        selector: "[data-editable='true'], td[role='gridcell'] button, button[role='switch']",
+        guide: "Click kích hoạt inline editor hoặc đảo trạng thái switch"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận trạng thái tự động lưu (Auto-saved) thành công, xuất hiện indicator hoặc toast báo đã lưu"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 23: UNIVERSAL SAFE DELETE WITH CONFIRMATION DIALOG
+  // =========================================================================
+  {
+    id: "universal-delete-confirmation-flow",
+    name: "Chu Trình Xóa An Toàn Kèm Hộp Thoại Xác Nhận (Safe Delete with Confirmation Dialog)",
+    type: "UNIVERSAL_INTERACTION",
+    role: "USER",
+    category: "UNIVERSAL_GENERIC",
+    account: CANONICAL_ACCOUNT_CATALOG.USER,
+    description: "Click nút 'Xóa' trên một hàng dữ liệu -> Hộp thoại xác nhận SweetAlert2 / Modal xuất hiện -> Click 'Xác nhận xóa' -> Assert hàng bị gỡ khỏi bảng và xuất hiện Toast thành công",
+    startUrl: "/dashboard",
+    steps: [
+      {
+        action: "navigate",
+        url: "/dashboard",
+        guide: "Mở bảng dữ liệu"
+      },
+      {
+        action: "click",
+        targetName: "Nút Xóa trên hàng dữ liệu",
+        selector: "button:has-text('Xóa'), button:has-text('Delete'), [data-action='delete']",
+        guide: "Click nút xóa bản ghi"
+      },
+      {
+        action: "assert_modal",
+        targetName: "Hộp thoại xác nhận SweetAlert2",
+        selector: ".swal2-container, dialog[modal], [role='dialog']",
+        guide: "Xác nhận hộp thoại hỏi xác nhận 'Bạn có chắc chắn muốn xóa?' xuất hiện"
+      },
+      {
+        action: "click",
+        targetName: "Nút 'Hủy bỏ' hoặc 'Xác nhận xóa'",
+        selector: ".swal2-cancel, button:has-text('Hủy'), .swal2-confirm, button:has-text('Xác nhận')",
+        guide: "Click nút hành động trong hộp thoại xác nhận"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận hộp thoại đóng lại an toàn, bảo toàn tính toàn vẹn của giao diện"
+      }
+    ]
+  },
+
+  // =========================================================================
+  // JOURNEY 24: UNIVERSAL DRAG-AND-DROP REORDER (@dnd-kit)
+  // =========================================================================
+  {
+    id: "universal-dnd-reorder-flow",
+    name: "Chu Trình Kéo Thả Đổi Thứ Tự Danh Sách / Kanban (Drag-and-Drop Reorder @dnd-kit)",
+    type: "UNIVERSAL_INTERACTION",
+    role: "USER",
+    category: "UNIVERSAL_GENERIC",
+    account: CANONICAL_ACCOUNT_CATALOG.USER,
+    description: "Kéo thả phần tử từ vị trí A sang vị trí B bằng lệnh drag(pageId, from_uid, to_uid) -> Assert thứ tự mới được cập nhật tại chỗ",
+    startUrl: "/dashboard",
+    steps: [
+      {
+        action: "navigate",
+        url: "/dashboard",
+        guide: "Mở giao diện có kéo thả danh mục hoặc Kanban"
+      },
+      {
+        action: "snapshot",
+        guide: "Gọi take_snapshot(pageId) tìm uid phần tử nguồn và vị trí đích"
+      },
+      {
+        action: "drag",
+        targetName: "Khối phần tử cần kéo thả",
+        guide: "Thực thi drag(pageId, from_uid, to_uid) qua Chrome DevTools MCP"
+      },
+      {
+        action: "assert_state",
+        guide: "Xác nhận vị trí mới được cập nhật tại chỗ mà không reload trang"
+      }
+    ]
   }
 ];
 
@@ -948,6 +1741,7 @@ export const UNIVERSAL_INTERACTIVE_JOURNEYS = [
  * Mapping between module IDs and their core business journeys
  */
 export const MODULE_JOURNEY_MAP = {
+  // Hospitality Domain
   guest_os: [
     "guest-frontdesk-closed-loop-flow",
     "marketplace-order-fulfillment-flow"
@@ -974,16 +1768,91 @@ export const MODULE_JOURNEY_MAP = {
     "marketplace-order-fulfillment-flow"
   ],
   admin: [
-    "owner-room-inventory-crud-flow"
+    "owner-room-inventory-crud-flow",
+    "saas-team-invite-rbac-flow",
+    "universal-crud-drawer-flow"
+  ],
+
+  // E-Commerce Domain
+  storefront: [
+    "ecom-browse-cart-checkout-flow",
+    "universal-table-filter-pagination-flow"
+  ],
+  customer: [
+    "ecom-browse-cart-checkout-flow",
+    "universal-crud-drawer-flow"
+  ],
+  vendor: [
+    "ecom-merchant-fulfillment-flow",
+    "ecom-product-crud-flow",
+    "universal-inline-edit-autosave-flow"
+  ],
+
+  // SaaS Domain
+  marketing: [
+    "saas-subscription-upgrade-flow",
+    "universal-table-filter-pagination-flow"
+  ],
+  workspace: [
+    "saas-workspace-project-crud-flow",
+    "universal-crud-drawer-flow",
+    "universal-dnd-reorder-flow"
+  ],
+  team_billing: [
+    "saas-team-invite-rbac-flow",
+    "saas-subscription-upgrade-flow",
+    "universal-crud-drawer-flow"
+  ],
+
+  // CRM Domain
+  portal: [
+    "crm-appointment-booking-flow"
+  ],
+  sales: [
+    "crm-lead-pipeline-stage-flow",
+    "universal-table-filter-pagination-flow"
+  ],
+  calendar: [
+    "crm-appointment-booking-flow",
+    "universal-dnd-reorder-flow"
+  ],
+
+  // Universal Generic Fallbacks
+  public: [
+    "universal-table-filter-pagination-flow"
+  ],
+  partner: [
+    "universal-crud-drawer-flow",
+    "universal-inline-edit-autosave-flow"
   ]
 };
 
 /**
- * Filter journeys relevant to a specific module ID
+ * Filter journeys relevant to a specific module ID with universal fallback
  */
-export function listJourneysForModule(moduleId) {
+export function listJourneysForModule(moduleId, domain = 'generic') {
   const journeyIds = MODULE_JOURNEY_MAP[moduleId] || [];
-  return UNIVERSAL_INTERACTIVE_JOURNEYS.filter(j => journeyIds.includes(j.id));
+  let journeys = UNIVERSAL_INTERACTIVE_JOURNEYS.filter(j => journeyIds.includes(j.id));
+  
+  // If no journeys specifically mapped, provide universal generic journeys!
+  if (journeys.length === 0) {
+    journeys = UNIVERSAL_INTERACTIVE_JOURNEYS.filter(j => j.category === 'UNIVERSAL_GENERIC');
+  }
+  return journeys;
+}
+
+/**
+ * Filter journeys relevant to a specific domain (hospitality, ecommerce, saas, crm, generic)
+ */
+export function listJourneysForDomain(domain = 'hospitality') {
+  const domainKey = domain.toUpperCase();
+  return UNIVERSAL_INTERACTIVE_JOURNEYS.filter(j => {
+    if (domainKey === 'HOSPITALITY') return j.category && (j.category.includes('OPS') || j.category === 'TAPE_CHART' || j.category === 'RESERVATIONS' || j.category === 'ROOM_OPERATIONS' || j.category === 'HOTEL_INVENTORY' || j.category === 'HOTEL_SETUP' || j.category === 'COMPLIANCE_OPS' || j.category === 'BILLING_OPS');
+    if (domainKey === 'ECOMMERCE') return j.category === 'ECOMMERCE_OPS' || j.category === 'UNIVERSAL_GENERIC';
+    if (domainKey === 'SAAS') return j.category === 'SAAS_OPS' || j.category === 'UNIVERSAL_GENERIC';
+    if (domainKey === 'CRM') return j.category === 'CRM_OPS' || j.category === 'UNIVERSAL_GENERIC';
+    return j.category === 'UNIVERSAL_GENERIC';
+  });
 }
 
 /**

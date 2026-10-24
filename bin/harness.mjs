@@ -10,7 +10,8 @@ import { checkAndSyncProject } from '../src/core/smart-sync.mjs';
 import { SubagentDispatcher } from '../src/core/subagent-dispatcher.mjs';
 import { loadHarnessConfig } from '../src/core/config-loader.mjs';
 import { inspectPrerequisites, inspectModulePrerequisites, STANDARD_MOCK_FIXTURES } from '../src/core/prerequisite-inspector.mjs';
-import { HARNESS_MODULES, partitionRoutesByModule } from '../src/core/module-registry.mjs';
+import { HARNESS_MODULES, partitionRoutesByModule, detectProjectDomain } from '../src/core/module-registry.mjs';
+import { runAutonomousHumanExplorer } from '../src/drivers/autonomous-human-explorer.mjs';
 
 const args = process.argv.slice(2);
 const command = args[0] || 'run';
@@ -23,6 +24,7 @@ Cách dùng:
   agent-harness [lệnh] [tùy chọn]
 
 2 CHẾ ĐỘ KIỂM THỬ CHÍNH:
+  test:auto            [TỰ ĐỘNG TOÀN DIỆN] Khởi chạy kiểm thử tự động, mô phỏng người dùng thật, quét tìm & ghi lỗi có cấu trúc
   test:code            [CHẾ ĐỘ 1] Test Code & Độ Ổn Định Hệ Thống (Types, Build, UI Rules, Sockets, Concurrency)
   test:flow            [CHẾ ĐỘ 2] Test Flow Luồng & Giao Diện Người Dùng (Chrome DevTools, UI Actions, 0-Console Error)
   run                  Chạy toàn diện cả 2 chế độ (Dual-pass)
@@ -161,6 +163,31 @@ async function main() {
   if (command === 'discover') {
     await handleDiscover();
     process.exit(0);
+  }
+
+  if (command === 'test:auto' || command === 'auto') {
+    console.log(`\n======================================================`);
+    console.log(` BẬT CHẾ ĐỘ AUTO TEST (MÔ PHỎNG NGƯỜI DÙNG THẬT & GHI LỖI)`);
+    console.log(`======================================================`);
+    await checkAndSyncProject(process.cwd());
+
+    const config = loadHarnessConfig(process.cwd());
+    const domain = detectProjectDomain(config.browser?.routes || [], config);
+    console.log(` Phân loại nghiệp vụ dự án: [${domain.toUpperCase()}]`);
+
+    const result = await runAutonomousHumanExplorer(config, {
+      autoStart: args.includes('--auto-start'),
+      noKill: args.includes('--no-kill')
+    });
+
+    if (result.passed) {
+      console.log(`\n🎉 TẤT CẢ ROUTE VÀ THAO TÁC ĐỀU HOÀN THÀNH VỚI 0 LỖI!`);
+      process.exit(0);
+    } else {
+      console.error(`\n⚠️ PHÁT HIỆN ${result.totalIncidents} LỖI TRONG QUÁ TRÌNH KIỂM THỬ.`);
+      console.error(`Xem hồ sơ chi tiết tại: harness-out/INCIDENT_PACK.json và harness-out/SUMMARY_REPORT.md\n`);
+      process.exit(1);
+    }
   }
 
   if (command === 'sync' || command === 'check-sync') {

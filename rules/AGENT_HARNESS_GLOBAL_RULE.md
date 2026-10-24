@@ -14,8 +14,10 @@ All AI agents (Antigravity, Codex, Orca) MUST strictly execute this deterministi
    - Worker 2 (`QA Flow Inspector`, model: inherit): Spawn dedicated window via `new_page(url)`, bind with `select_page`, verify flows, teardown with `close_page`. NEVER hijack open tabs.
    - Multi-Persona Closed-Loop Verification: Execute `agent-harness subagents:personas` to spawn Guest, Receptionist, Housekeeping, and Owner subagents on independent Chrome windows.
 
-### 2. CANONICAL ACCOUNTS & ROLE CREDENTIALS CATALOG
-Mọi tác vụ kiểm thử luồng người dùng BẮT BUỘC sử dụng đúng tài khoản phân quyền chuẩn:
+### 2. CANONICAL ACCOUNTS & MULTI-DOMAIN CREDENTIALS CATALOG
+Mọi tác vụ kiểm thử luồng người dùng BẮT BUỘC sử dụng đúng tài khoản phân quyền chuẩn theo từng Domain:
+
+#### A. Hospitality Domain (VietSage / Hotel PMS):
 | Role Code | Vai trò hiển thị | Email / Username | Mật khẩu | URL đăng nhập | URL bắt đầu |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `GUEST` | Khách lưu trú | *Không cần login* | N/A | N/A | `/g/DEMO_QR_ROOM_101` |
@@ -23,6 +25,33 @@ Mọi tác vụ kiểm thử luồng người dùng BẮT BUỘC sử dụng đ�
 | `HOUSEKEEPING` | Nhân viên Buồng phòng | `housekeeping@vietsage.vn` | `Admin@123` | `/dangnhap` | `/hotels/HCA_HOMESTAY/rooms` |
 | `TENANT_OWNER` | Chủ khách sạn | `thucvn@gmail.com` *(hoặc tenant@vietsage.vn)* | `Admin@123` | `/dangnhap` | `/owner/dashboard` & Channel Manager |
 | `SUPER_ADMIN` | Quản trị nền tảng | `admin@vietsage.vn` | `Admin@123` | `/dangnhap` | `/admin/dashboard` |
+
+#### B. E-Commerce Domain:
+| Role Code | Vai trò hiển thị | Email / Username | Mật khẩu | URL đăng nhập | URL bắt đầu |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `SHOPPER` | Khách mua hàng | *Không cần login* | N/A | N/A | `/shop` hoặc `/products` |
+| `CUSTOMER` | Khách hàng đăng nhập | `customer@shop.test` | `Admin@123` | `/dangnhap` | `/account/orders` |
+| `MERCHANT` | Nhà bán hàng | `merchant@shop.test` | `Admin@123` | `/dangnhap` | `/vendor/orders` |
+| `STORE_ADMIN` | Quản trị sàn | `admin@shop.test` | `Admin@123` | `/dangnhap` | `/admin/dashboard` |
+
+#### C. B2B SaaS Domain:
+| Role Code | Vai trò hiển thị | Email / Username | Mật khẩu | URL đăng nhập | URL bắt đầu |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `WORKSPACE_OWNER` | Chủ sở hữu tổ chức | `owner@saas.test` | `Admin@123` | `/dangnhap` | `/settings/billing` |
+| `TEAM_MEMBER` | Thành viên nhóm | `member@saas.test` | `Admin@123` | `/dangnhap` | `/workspace` |
+
+#### D. CRM / Appointment Domain:
+| Role Code | Vai trò hiển thị | Email / Username | Mật khẩu | URL đăng nhập | URL bắt đầu |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `CLIENT` | Khách đặt lịch hẹn | *Không cần login* | N/A | N/A | `/booking` |
+| `SALES_REP` | Nhân viên kinh doanh | `sales@crm.test` | `Admin@123` | `/dangnhap` | `/pipeline` |
+| `SALES_MANAGER` | Quản lý vận hành | `manager@crm.test` | `Admin@123` | `/dangnhap` | `/calendar` |
+
+#### E. Universal Generic Domain:
+| Role Code | Vai trò hiển thị | Email / Username | Mật khẩu | URL đăng nhập | URL bắt đầu |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `USER` | Người dùng ứng dụng | `user@app.test` | `Admin@123` | `/dangnhap` | `/dashboard` |
+| `ADMIN` | Quản trị viên hệ thống | `admin@app.test` | `Admin@123` | `/dangnhap` | `/admin` |
 
 ### 3. FEATURE DEVELOPMENT SYNC (Living Harness Spec)
 Never finalize code without syncing the harness spec. Before task completion:
