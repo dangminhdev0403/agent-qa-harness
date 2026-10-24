@@ -61,6 +61,43 @@ export class SubagentDispatcher {
   }
 
   /**
+   * Generates the 4 ironclad execution laws for every subagent:
+   * 1. 1 Role = 1 Dedicated Isolated Tab (Never reuse tabs across roles)
+   * 2. Real Form Submission & Mutation Persistence (Never click-and-stop or cancel)
+   * 3. Experiential UX/UI Critique as a Real Human User
+   * 4. Emit All UX & Functional Defects into harness-out/INCIDENT_PACK.json for Batch Fixing
+   */
+  getMandatoryExecutionLaws(roleName, sessionId) {
+    return `
+================================================================================
+🚨 4 QUY TẮC THỰC THI BẮT BUỘC (MANDATORY REAL-SUBMIT, TAB ISOLATION & UX AUDIT):
+================================================================================
+1. MỖI ROLE = 1 TAB MỚI CÁCH LY HOÀN TOÀN (STRICT PER-ROLE TAB ISOLATION):
+   - Vai trò "${roleName}" BẮT BUỘC chạy trên Tab độc lập riêng biệt: \`new_page(url, isolatedContext: "${sessionId}")\`.
+   - Trước mỗi thao tác, luôn gọi \`select_page(pageId)\` của đúng Tab vai trò này.
+   - TUYỆT ĐỐI CẤM dùng chung 1 tab cho nhiều role, cấm đăng xuất/đăng nhập đè lên tab của role khác để bảo toàn phiên JWT/Cookie và kiểm chứng WebSocket đồng thời giữa các role.
+
+2. THỰC SỰ SUBMIT & KIỂM CHỨNG LƯU DỮ LIỆU (NO CLICK-AND-STOP / NO CANCEL):
+   - TUYỆT ĐỐI CẤM chỉ mở Modal/Drawer/Form ra xem, chụp ảnh rồi bấm "Hủy bỏ" hoặc dừng lại!
+   - BẮT BUỘC điền đầy đủ dữ liệu hợp lệ vào tất cả các trường và bấm nút Submit chính (\`button[type="submit"]\`, \`Lưu\`, \`Áp dụng cập nhật\`, \`Xác nhận tạo\`, \`Gửi yêu cầu\`, \`Tiếp nhận\`, \`Hoàn thành\`).
+   - Sau khi bấm Submit, BẮT BUỘC:
+     a) Gọi \`list_network_requests(pageId)\` xác nhận có request \`POST\`/\`PUT\`/\`PATCH\`/\`DELETE\` thực sự gửi đi và trả về HTTP 200/201.
+     b) Gọi \`take_snapshot(pageId)\` xác nhận dữ liệu vừa submit đã thực sự xuất hiện/cập nhật trên bảng, danh sách hoặc lưới lịch (State Persistence).
+
+3. QUAN SÁT & ĐÁNH GIÁ UI/UX VỚI TƯ CÁCH NGƯỜI TRẢI NGHIỆM THẬT (EXPERIENTIAL UX CRITIQUE):
+   - Trên từng màn hình và từng thao tác, hãy đặt mình vào vị trí người dùng thật để soi xét các điểm bất hợp lý:
+     * [Trải nghiệm Form]: Có bắt người dùng tự gõ mã UUID/ID thô thay vì hiển thị Dropdown \`<select>\` tên dễ hiểu không? Placeholder có bị để chữ rác của dev (\`"VD: Test"\`, \`"01 /"\`) không?
+     * [Phản hồi Tương tác]: Khi bấm Submit có hiệu ứng loading/spinner hoặc disable nút để chống bấm đúp không? Hay bấm xong giao diện đứng im không rõ đã lưu hay chưa?
+     * [Bố cục & Hiển thị]: Modal/Drawer mở ra có bị tràn màn hình, che mất nút Lưu, lệch hàng, chồng chéo chữ, hoặc có 2 nút hành động trùng lặp gây bối rối không?
+     * [Chuẩn Typography & Ngôn ngữ]: Có chữ nào quá bé (\`< 12px\`), tiêu đề bị rớt 1 chữ lẻ loi xuống dòng (thiếu \`text-balance\`), badge bị gãy dòng (thiếu \`whitespace-nowrap\`), hoặc lộ mã enum kỹ thuật (\`SUPER_ADMIN\`, \`HOTEL_FRONTDESK\`), mã lỗi HTTP thô (\`404 Not Found\`, \`500 Internal\`) ra màn hình không?
+
+4. BẮN TOÀN BỘ LỖI & ĐIỂM BẤT HỢP LÝ VỀ HỘP TỔNG HỢP ĐỂ FIX (\`INCIDENT_PACK.json\`):
+   - Bất kỳ lỗi submit thất bại, nút bấm không ăn, API lỗi, HOẶC bất kỳ điểm UI/UX nào không hợp lý phát hiện ở Mục 3 BẮT BUỘC phải được ghi bổ sung vào file \`harness-out/INCIDENT_PACK.json\` (mảng \`failures\` / \`incidents\`) theo cấu trúc:
+     \`{ "tier": "browser", "category": "UX_EXPERIENTIAL_DEFECT", "canAutoFix": true, "role": "${roleName}", "target": "<URL hoặc Tên Component>", "error": "<Mô tả chi tiết điểm bất hợp lý dưới góc nhìn người dùng>", "remediationSuggestion": "<Hướng dẫn sửa file/component cụ thể để Fixer Agent xử lý>" }\`
+================================================================================`;
+  }
+
+  /**
    * Generates Dual-Pass Parallel Swarm Plan
    */
   generateDualPassPlan() {
@@ -100,7 +137,8 @@ MANDATORY CHROME ISOLATION PROTOCOL:
    - Verify In-Place Tab Isolation (drawers/modals open in-place, zero cross-tab redirect).
 4. Save checkpoint screenshot to harness-out/screenshots/${windowSessionId}/flow-checkpoint.png.
 5. CLEAN TEARDOWN: Always call \`close_page(pageId)\` upon completion (PASS or FAIL).
-Window Session Tag: ${windowSessionId}`
+Window Session Tag: ${windowSessionId}
+${this.getMandatoryExecutionLaws("QA Flow Inspector", windowSessionId)}`
     };
 
     return {
@@ -379,7 +417,8 @@ CÁC BƯỚC THAO TÁC CỤ THỂ (CLICK VÀO ĐÂU, ĐIỀN CÁI GÌ):
    - Khi Lễ tân bấm "Hoàn thành": Kiểm tra giao diện khách cập nhật sang "Đã hoàn thành".
 6. KẾT THÚC & DỌN DẸP:
    - Chụp ảnh màn hình lưu vào: harness-out/screenshots/${guestSession}/guest-closed-loop.png.
-   - Gọi \`close_page(pageId)\`. Báo cáo kết quả luồng khách cho coordinator.`
+   - Gọi \`close_page(pageId)\`. Báo cáo kết quả luồng khách cho coordinator.
+${this.getMandatoryExecutionLaws("GUEST", guestSession)}`
     };
 
     // 2. Worker Lễ Tân Khách Sạn (Frontdesk Receptionist)
@@ -425,7 +464,8 @@ CÁC BƯỚC THAO TÁC CỤ THỂ (CLICK VÀO ĐÂU, ĐIỀN CÁI GÌ, DUYỆT C
    - Click "Hoàn tất trả phòng (Check-out)" -> Phòng chuyển sang PROCESSING (Chờ dọn dẹp).
 6. KẾT THÚC & DỌN DẸP:
    - Chụp ảnh màn hình lưu vào: harness-out/screenshots/${receptionistSession}/receptionist-full-ops.png.
-   - Gọi \`close_page(pageId)\`. Báo cáo kết quả vận hành lễ tân cho coordinator.`
+   - Gọi \`close_page(pageId)\`. Báo cáo kết quả vận hành lễ tân cho coordinator.
+${this.getMandatoryExecutionLaws("HOTEL_FRONTDESK", receptionistSession)}`
     };
 
     // 3. Worker Buồng Phòng (Housekeeping Staff)
@@ -458,7 +498,8 @@ CÁC BƯỚC THAO TÁC CỤ THỂ (CLICK VÀO ĐÂU, XÁC NHẬN CÁI GÌ):
    - Xác nhận phòng chuyển sang màu xanh / trạng thái 'AVAILABLE' (Sẵn sàng đón khách mới).
 4. KẾT THÚC & DỌN DẸP:
    - Chụp ảnh màn hình lưu vào: harness-out/screenshots/${housekeepingSession}/room-ready.png.
-   - Gọi \`close_page(pageId)\`. Báo cáo trạng thái phòng sạch cho coordinator.`
+   - Gọi \`close_page(pageId)\`. Báo cáo trạng thái phòng sạch cho coordinator.
+${this.getMandatoryExecutionLaws("HOUSEKEEPING", housekeepingSession)}`
     };
 
     // 4. Worker Chủ Khách Sạn (Hotel Owner / Channel Manager)
@@ -487,7 +528,7 @@ CÁC BƯỚC THAO TÁC CỤ THỂ (CLICK VÀO ĐÂU, CẬP NHẬT CÁI GÌ):
    - Xác nhận Modal mở tại chỗ (In-Place Tab Isolation: không reload).
    - Click nút "Chọn tất cả hạng phòng hợp lệ".
    - Điền ô giá: \`fill(pageId, price_uid, "2500000")\`.
-   - Click nút "Hủy bỏ" hoặc "Áp dụng cập nhật" để đóng modal an toàn.
+   - BẮT BUỘC click nút "Áp dụng cập nhật" (TUYỆT ĐỐI CẤM bấm "Hủy bỏ") -> Kiểm tra \`list_network_requests\` xác nhận request POST/PUT trả về 200/201 và các ô giá trên bảng lịch thực sự cập nhật thành 2.500.000 VND.
 3. THAO TÁC TOGGLE Ô TRẠNG THÁI BÁN TRỰC TIẾP (INLINE CELL):
    - Locate nút "Đang mở bán" trên bảng lịch.
    - Click -> trạng thái lập tức chuyển thành "Đang đóng bán" và tự động lưu.
@@ -504,7 +545,8 @@ CÁC BƯỚC THAO TÁC CỤ THỂ (CLICK VÀO ĐÂU, CẬP NHẬT CÁI GÌ):
    - Click nút "Bảo trì" để chuyển trạng thái sang MAINTENANCE, sau đó hoàn trả hoạt động.
 6. KẾT THÚC & DỌN DẸP:
    - Chụp ảnh màn hình lưu vào: harness-out/screenshots/${ownerSession}/owner-audit.png.
-   - Gọi \`close_page(pageId)\`. Báo cáo kết quả quản lý quỹ phòng cho coordinator.`
+   - Gọi \`close_page(pageId)\`. Báo cáo kết quả quản lý quỹ phòng cho coordinator.
+${this.getMandatoryExecutionLaws("TENANT_OWNER", ownerSession)}`
     };
 
     return {
@@ -580,7 +622,8 @@ HƯỚNG DẪN THAO TÁC TƯƠNG TÁC THẬT (MANDATORY CRUD & DRAG-AND-DROP):
    - Báo cáo rõ nguyên nhân gốc rễ và đề xuất lệnh cho DBA.
 5. CHỤP ẢNH & ĐÓNG CỬA SỔ:
    - Lưu ảnh chụp: harness-out/screenshots/${sessionId}/checkpoint.png.
-   - Luôn luôn gọi \`close_page(pageId)\` khi hoàn tất.${journeyGuides ? `\n\n=======================================================\nCÁC KỊCH BẢN NGHIỆP VỤ BẮT BUỘC THỰC THI CHO MODULE NÀY:\n=======================================================\n${journeyGuides}` : ''}`;
+   - Luôn luôn gọi \`close_page(pageId)\` khi hoàn tất.
+${this.getMandatoryExecutionLaws(mod.role || mod.id, sessionId)}${journeyGuides ? `\n\n=======================================================\nCÁC KỊCH BẢN NGHIỆP VỤ BẮT BUỘC THỰC THI CHO MODULE NÀY:\n=======================================================\n${journeyGuides}` : ''}`;
 
       const roleTitle = `QA ${mod.name} Inspector`;
 
@@ -646,9 +689,10 @@ INSTRUCTIONS:
    If the incident is classified as 'REPORT_ONLY_DATABASE' (missing migration, column not found, Prisma P2022) or 'REPORT_ONLY_RBAC' (security permission guard):
    - DO NOT attempt to run database migrations, ALTER TABLE, or strip @UseGuards() / permissions!
    - Mark the incident as REPORT_ONLY, emit the structured root-cause dossier, and halt immediately.
-4. FOR AUTO-FIXABLE ISSUES (UI, Styling, Typography >= 12px, Click Handlers, DTO Keys):
-   - Inspect ONLY the directly failing component, service, or contract file. Touch ZERO unrelated files.
-   - Apply the minimal atomic fix strictly adhering to project conventions.
+4. FOR AUTO-FIXABLE ISSUES (UI, Experiential UX Defects, Unsubmitted Flows, Styling, Typography >= 12px, Click Handlers, DTO Keys):
+   - Read ALL auto-fixable incidents aggregated in \`harness-out/INCIDENT_PACK.json\` (including \`UX_EXPERIENTIAL_DEFECT\` and \`UNSUBMITTED_FLOW_VIOLATION\`).
+   - Inspect ONLY the directly failing component, service, or contract files. Touch ZERO unrelated files.
+   - Apply the minimal atomic fix strictly adhering to project conventions (replace raw UUID inputs with <select> dropdowns, add submit loading/disabled states, enforce text-xs >= 12px floor, add text-balance on headings, wire missing form onSubmit handlers).
    - Verify your fix locally using \`agent-harness probe:${failingTier}\`.
 5. CIRCUIT BREAKER: Max 3 remediation attempts allowed. If you cannot solve within 3 tries, HALT immediately (exit code 2).
 6. If your fix involves browser verification, strictly use \`new_page\` to spawn a dedicated window and call \`close_page\` when done.

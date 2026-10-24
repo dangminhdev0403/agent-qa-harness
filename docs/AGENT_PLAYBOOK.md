@@ -15,13 +15,19 @@ Toàn bộ quy trình kiểm thử tự động của Harness được xây dự
   * **Universal Generic**: Bảng dữ liệu Headless, Modal/Drawer CRUD, Sửa ô inline auto-save, Xóa an toàn.
 - Tự động nạp tài khoản kiểm thử và kịch bản nghiệp vụ tương ứng từ `CANONICAL_ACCOUNT_CATALOG` mà không bắt người dùng cấu hình thủ công.
 
-### Trụ Cột 2: Thao Tác Sâu Như Người Dùng Thật (Authentic Human Interaction Protocol)
-- **Tuyệt đối cấm kiểm thử qua loa**: Chấm dứt việc chỉ get link tĩnh hay đăng nhập rồi thoát!
-- Mô phỏng hành vi người dùng thật qua 4 tầng:
-  1. **Đăng nhập thật**: Điền credentials, lưu trữ JWT/session an toàn.
-  2. **Form CRUD Thực Tế**: Điền dữ liệu ngữ cảnh hợp lý (Họ tên, SĐT, CCCD, Tiền cọc, Địa chỉ), bấm nút Lưu.
-  3. **In-Place Tab Isolation**: Mở modal/drawer tại chỗ, không nhảy trang, bảo toàn thanh cuộn và bộ lọc.
-  4. **Tương tác Phức tạp**: Lọc tab không reload, sửa inline cell tự lưu, kéo thả (@dnd-kit drag-and-drop), và kiểm tra WebSocket đồng bộ 2 cửa sổ realtime.
+### Trụ Cột 2: Thao Tác Sâu Như Người Dùng Thật & Bắt Buộc Submit Thật (Authentic Human Interaction & Mandatory Submit Protocol)
+- **Tuyệt đối cấm "Click xem qua rồi dừng" hoặc "Mở Modal rồi bấm Hủy bỏ"**: Chấm dứt hoàn toàn việc chỉ mở form chụp ảnh rồi đóng lại!
+- **4 Luật Thực Thi Bắt Buộc cho mọi Subagent & Explorer**:
+  1. **Mỗi Role = 1 Tab Mới Cách Ly (`1 Role = 1 Dedicated Isolated Tab`)**: Mỗi vai trò (`GUEST`, `FRONTDESK`, `HOUSEKEEPING`, `OWNER`, `ADMIN`, `SHOPPER`, `MERCHANT`, v.v.) BẮT BUỘC khởi tạo 1 tab riêng biệt bằng `new_page(url, isolatedContext: "role-<roleName>-<sessionId>")` và gọi `select_page(pageId)` trước mỗi thao tác. Tuyệt đối CẤM dùng chung 1 tab cho nhiều role để tránh mất phiên JWT/Cookie và bắt trọn sự kiện WebSocket realtime đồng thời giữa các role.
+  2. **Thực Sự Submit & Kiểm Chứng Lưu Dữ Liệu (`Real Form Submission & State Persistence`)**: Khi mở bất kỳ Modal, Drawer hay Form nào, BẮT BUỘC điền dữ liệu hợp lệ và bấm nút Submit chính (`button[type="submit"]`, `Lưu`, `Áp dụng cập nhật`, `Xác nhận tạo`, `Gửi yêu cầu`, `Tiếp nhận`, `Hoàn thành`). Sau khi bấm:
+     - Kiểm tra `list_network_requests` xác nhận có request `POST`/`PUT`/`PATCH`/`DELETE` trả về HTTP `200`/`201`.
+     - Kiểm tra giao diện xác nhận bản ghi/trạng thái vừa submit thực sự xuất hiện và lưu bền vững trên bảng/lịch.
+  3. **Quan Sát & Đánh Giá UI Với Tư Cách Người Trải Nghiệm Thật (`Experiential UX Critique`)**: Đặt mình vào vị trí người dùng thực tế để phát hiện các điểm bất hợp lý trên từng màn hình:
+     - Form bắt gõ tay mã UUID/ID kỹ thuật thay vì Dropdown `<select>` hiển thị tên dễ hiểu.
+     - Nút bấm Submit thiếu trạng thái loading/disabled khi đang gửi khiến người dùng không biết hệ thống đang xử lý hay bị đơ.
+     - Bố cục Modal/Drawer bị tràn khung, che khuất nút Lưu, lệch hàng, hoặc có 2 nút hành động trùng lặp gây bối rối.
+     - Chữ quá nhỏ (`< 12px`), tiêu đề bị rớt 1 chữ lẻ loi xuống dòng (thiếu `text-balance`), badge bị gãy dòng (thiếu `whitespace-nowrap`), lộ mã enum thô (`SUPER_ADMIN`), lộ mã lỗi HTTP (`404 Not Found`), hoặc còn sót chữ nháp (`"VD: Test"`, `"01 /"`).
+  4. **Bắn Lỗi Về Hộp Tổng Hợp Để Fix (`Emit to INCIDENT_PACK.json & Batch Fix`)**: Mọi lỗi submit hoặc điểm UI/UX bất hợp lý BẮT BUỘC phải được bắn về `harness-out/INCIDENT_PACK.json` (với `category: "UX_EXPERIENTIAL_DEFECT"` hoặc `"UNSUBMITTED_FLOW_VIOLATION"`, `canAutoFix: true`, kèm URL, selector và hướng sửa cụ thể) để Coordinator và `QA Branch Fixer` tổng hợp và sửa triệt để.
 
 ### Trụ Cột 3: Bộ Dò Lỗi Đa Tầng (Deep Bug Detector & Oracles)
 Hệ thống tự động phát hiện và ghi nhận 6 loại khiếm khuyết phần mềm:

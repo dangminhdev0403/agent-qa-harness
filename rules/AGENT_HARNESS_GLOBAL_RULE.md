@@ -85,8 +85,14 @@ Routes in ANY repository are partitioned into discrete modules (via `config.modu
 - `partner`: Merchant, Vendor, Service Provider (requires `VENDOR` auth).
 - Custom Domain Modules (e.g. VietSage Hotel PMS: `guest_os`, `frontdesk`, `owner`, `marketplace`).
 
-### 7. CLOSED-LOOP BUSINESS LIFECYCLE & DEEP INTERACTION PROTOCOL
-Nghiêm cấm việc kiểm thử chỉ dừng lại ở điều hướng link tĩnh hoặc login rồi thoát. Subagents BẮT BUỘC thực thi tương tác DOM thật và chu trình khép kín đa vai trò:
+### 7. CLOSED-LOOP BUSINESS LIFECYCLE, REAL SUBMIT, PER-ROLE TAB ISOLATION & EXPERIENTIAL UX CRITIQUE PROTOCOL
+Nghiêm cấm việc kiểm thử chỉ dừng lại ở điều hướng link tĩnh, login rồi thoát, hoặc mở modal xem qua rồi bấm "Hủy bỏ". Subagents BẮT BUỘC tuân thủ 4 nguyên tắc bất biến trước và trong mọi kịch bản:
+- **Nguyên tắc A — Mỗi Role = 1 Tab Mới Cách Ly (`1 Role = 1 Dedicated Tab`)**: Mỗi vai trò (`GUEST`, `HOTEL_FRONTDESK`, `HOUSEKEEPING`, `TENANT_OWNER`, `SUPER_ADMIN`, v.v.) BẮT BUỘC bật 1 tab mới riêng biệt bằng `new_page(url, isolatedContext: "role-<ROLE>-<sessionId>")` và chuyển đổi bằng `select_page(pageId)`. CẤM dùng chung 1 tab cho nhiều role.
+- **Nguyên tắc B — Thực Sự Submit & Kiểm Chứng Lưu Trữ (`Mandatory Real Submit`)**: Mọi Form/Modal/Drawer mở ra BẮT BUỘC phải điền dữ liệu và bấm nút Submit thật (`Lưu`, `Áp dụng cập nhật`, `Xác nhận tạo`, `Gửi yêu cầu`, `Tiếp nhận`, `Hoàn thành`). CẤM chỉ mở xem hoặc bấm Hủy bỏ. Phải xác nhận API `POST`/`PUT`/`PATCH` trả `200`/`201` và dữ liệu mới hiển thị trên giao diện.
+- **Nguyên tắc C — Quan Sát UI Với Tư Cách Người Trải Nghiệm (`Experiential UX Critique`)**: Đánh giá từng màn hình như người dùng thật (form bắt nhập UUID thô thay vì dropdown, thiếu loading state khi submit, modal tràn khung che nút Lưu, chữ `< 12px`, tiêu đề thiếu `text-balance` gãy dòng cộc lốc, lộ mã enum/HTTP status code thô, nút trùng lặp).
+- **Nguyên tắc D — Bắn Lỗi Về Hộp Tổng Hợp Để Fix (`Emit to INCIDENT_PACK.json`)**: Mọi lỗi chức năng hoặc điểm UI/UX bất hợp lý phát hiện được BẮT BUỘC ghi vào `harness-out/INCIDENT_PACK.json` (`category: "UX_EXPERIENTIAL_DEFECT"`, `canAutoFix: true`, kèm vị trí file/component và hướng sửa) để tổng hợp và điều phối `QA Branch Fixer` sửa triệt để.
+
+Các chu trình nghiệp vụ bắt buộc thực thi:
 1. **Chu Trình Khép Kín Yêu Cầu Dịch Vụ Buồng Phòng (Guest -> Frontdesk Realtime Closed-Loop)**:
    - **Bước 1 (Khách gửi)**: Truy cập `/g/DEMO_QR_ROOM_101` -> Click menu "Dịch vụ" -> Click nút "Yêu cầu" trên thẻ dịch vụ 'Khăn tắm' -> Fill ghi chú: "Yêu cầu 2 khăn tắm bổ sung" -> Click "Gửi yêu cầu" -> Hệ thống sinh mã `REQ-...` với trạng thái "Chờ tiếp nhận". **Cửa sổ khách giữ nguyên không đóng**.
    - **Bước 2 (Lễ tân nhận & duyệt)**: Đăng nhập `frontdesk@vietsage.vn` / `Admin@123` tại `/dangnhap` -> Mở `/staff/front-desk` -> Nhận thông báo WebSocket realtime -> Click thẻ yêu cầu phòng 101 -> Drawer mở trượt tại chỗ -> Click nút "Tiếp nhận" -> Badge đổi sang "Đang xử lý".

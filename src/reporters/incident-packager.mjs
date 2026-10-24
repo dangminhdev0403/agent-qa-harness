@@ -170,7 +170,28 @@ export function classifyIncident(failure) {
     };
   }
 
-  // 3. Default: Auto-fixable in-place by coding agent
+  // 3. Experiential UX/UI Defects & Unsubmitted Flow Violations (Auto-Fixable by Coding Agent)
+  if (
+    failure.type === 'UX_EXPERIENTIAL_DEFECT' ||
+    failure.category === 'UX_EXPERIENTIAL_DEFECT' ||
+    failure.type === 'UNSUBMITTED_FLOW_VIOLATION' ||
+    failure.category === 'UNSUBMITTED_FLOW_VIOLATION' ||
+    errText.includes('trải nghiệm') ||
+    errText.includes('lộ mã kỹ thuật') ||
+    errText.includes('rác thiết kế')
+  ) {
+    return {
+      ...failure,
+      canAutoFix: true,
+      category: failure.category || 'UX_EXPERIENTIAL_DEFECT',
+      categoryTitle: 'Điểm Bất Hợp Lý Về Trải Nghiệm Người Dùng (UX/UI Experiential Defect - Cần Tổng Hợp & Fix)',
+      rootCause: failure.error || 'Giao diện/Trải nghiệm chưa hợp lý dưới góc nhìn người dùng thực tế',
+      nonFixReason: null,
+      remediationSuggestion: failure.remediationSuggestion || 'Tổng hợp và sửa trực tiếp tại component UI (thay UUID bằng Dropdown <select>, bổ sung trạng thái loading khi submit, chuẩn hóa cỡ chữ >= 12px text-xs, thêm text-balance cho tiêu đề, ẩn mã kỹ thuật thô).'
+    };
+  }
+
+  // 4. Default: Auto-fixable in-place by coding agent
   return {
     ...failure,
     canAutoFix: true,

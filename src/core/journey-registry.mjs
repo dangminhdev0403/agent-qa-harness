@@ -504,7 +504,7 @@ export const UNIVERSAL_INTERACTIVE_JOURNEYS = [
     role: "TENANT_OWNER",
     category: "HOTEL_INVENTORY",
     account: CANONICAL_ACCOUNT_CATALOG.OWNER,
-    description: "Mở modal cập nhật giá hàng loạt, chọn tất cả hạng phòng, nhập mức giá mới và hủy/lưu in-place",
+    description: "Mở modal cập nhật giá hàng loạt, chọn tất cả hạng phòng, nhập mức giá mới và BẮT BUỘC bấm 'Áp dụng cập nhật' (Submit thật) để lưu in-place và kiểm tra giá mới trên lưới lịch",
     startUrl: "/owner/hotels/cmu9y158p0001j8v487zujvhn/channel-manager",
     authSteps: [
       {
@@ -570,13 +570,21 @@ export const UNIVERSAL_INTERACTIVE_JOURNEYS = [
       },
       {
         action: "click",
-        targetName: "Nút 'Hủy bỏ' (hoặc 'Áp dụng cập nhật')",
-        selector: "button:has-text('Hủy bỏ')",
-        guide: "Click nút 'Hủy bỏ' hoặc 'Áp dụng cập nhật' để đóng Modal an toàn"
+        targetName: "Nút 'Áp dụng cập nhật' (BẮT BUỘC SUBMIT THẬT - CẤM BẤM HỦY BỎ)",
+        selector: "button[type='submit'], button:has-text('Áp dụng cập nhật'), button:has-text('Lưu cập nhật')",
+        guide: "BẮT BUỘC click nút 'Áp dụng cập nhật' để thực thi lệnh lưu thật xuống Backend (Tuyệt đối cấm bấm Hủy bỏ hoặc chỉ mở xem rồi đóng)"
       },
       {
-        action: "assert_closed",
-        guide: "Xác nhận Modal đóng lại, giao diện bảng lịch giữ nguyên vị trí cuộn và dữ liệu"
+        action: "assert_network_mutation",
+        guide: "Kiểm tra list_network_requests xác nhận request POST/PUT/PATCH cập nhật giá trả về HTTP 200/201 thành công"
+      },
+      {
+        action: "assert_persisted_in_ui",
+        guide: "Xác nhận Modal đóng lại, hiển thị thông báo thành công, giao diện bảng lịch giữ nguyên vị trí cuộn và các ô giá trên lưới lịch thực sự đổi sang 2.500.000 VND"
+      },
+      {
+        action: "ux_experiential_audit",
+        guide: "Quan sát với tư cách người trải nghiệm: Kiểm tra nút Submit có trạng thái loading/disabled khi đang lưu không, định dạng tiền tệ có dấu phân cách hàng nghìn dễ đọc không; nếu bất hợp lý phải bắn lỗi vào INCIDENT_PACK.json"
       }
     ]
   },
@@ -1691,13 +1699,17 @@ export const UNIVERSAL_INTERACTIVE_JOURNEYS = [
       },
       {
         action: "click",
-        targetName: "Nút 'Hủy bỏ' hoặc 'Xác nhận xóa'",
-        selector: ".swal2-cancel, button:has-text('Hủy'), .swal2-confirm, button:has-text('Xác nhận')",
-        guide: "Click nút hành động trong hộp thoại xác nhận"
+        targetName: "Nút 'Xác nhận xóa' (BẮT BUỘC SUBMIT THẬT)",
+        selector: ".swal2-confirm, button:has-text('Xác nhận xóa'), button:has-text('Đồng ý'), button:has-text('Xóa')",
+        guide: "BẮT BUỘC click nút 'Xác nhận xóa' trong hộp thoại xác nhận để thực thi lệnh xóa thật (Cấm bấm Hủy bỏ)"
       },
       {
-        action: "assert_state",
-        guide: "Xác nhận hộp thoại đóng lại an toàn, bảo toàn tính toàn vẹn của giao diện"
+        action: "assert_network_mutation",
+        guide: "Kiểm tra list_network_requests xác nhận request DELETE/POST trả về HTTP 200/204 thành công"
+      },
+      {
+        action: "assert_persisted_in_ui",
+        guide: "Xác nhận hộp thoại đóng lại, xuất hiện thông báo xóa thành công và bản ghi vừa xóa biến mất hoàn toàn khỏi bảng dữ liệu mà không làm giật/reload trang"
       }
     ]
   },
@@ -1928,6 +1940,12 @@ export function generateStepByStepGuide(journey) {
       if (s.value) lines.push(`     - Dữ liệu nhập: \`${s.value}\``);
     });
   }
+
+  lines.push(``);
+  lines.push(`## 🚨 3 NGUYÊN TẮC THỰC THI BẮT BUỘC TRONG KỊCH BẢN NÀY:`);
+  lines.push(`  1. **MỖI ROLE = 1 TAB MỚI CÁCH LY (\`isolatedContext\`)**: Bắt buộc mở tab riêng biệt cho từng vai trò bằng \`new_page(url, isolatedContext: "role-<ROLE_CODE>")\`. Tuyệt đối CẤM dùng chung 1 tab cho nhiều role để tránh mất phiên đăng nhập và bắt được sự kiện WebSocket realtime đồng thời.`);
+  lines.push(`  2. **THỰC SỰ SUBMIT & KIỂM TRA LƯU TRỮ (CẤM CLICK XEM QUA RỒI DỪNG)**: Khi mở bất kỳ Modal/Drawer/Form nào, BẮT BUỘC điền dữ liệu hợp lệ và bấm nút Submit thật (\`Lưu\`, \`Áp dụng cập nhật\`, \`Xác nhận tạo\`, \`Gửi yêu cầu\`, \`Tiếp nhận\`, \`Hoàn thành\`). Kiểm tra \`list_network_requests\` có request POST/PUT/PATCH trả về 200/201 và kiểm tra bản ghi mới thực sự hiển thị trên giao diện.`);
+  lines.push(`  3. **QUAN SÁT UI/UX NHƯ NGƯỜI TRẢI NGHIỆM & BẮN LỖI ĐỂ TỔNG HỢP FIX**: Đóng vai người dùng thật quan sát mọi điểm bất hợp lý trên giao diện (nút bấm khó tìm, thiếu trạng thái loading khi submit, form bắt nhập UUID thô thay vì dropdown, chữ nhỏ < 12px, tiêu đề gãy dòng thiếu \`text-balance\`, lộ mã enum/HTTP status code thô, 2 nút trùng chức năng). Mọi điểm bất hợp lý BẮT BUỘC ghi vào \`harness-out/INCIDENT_PACK.json\` (phân loại \`UX_EXPERIENTIAL_DEFECT\`, \`canAutoFix: true\`) để tổng hợp và fix triệt để.`);
 
   return lines.join('\n');
 }
